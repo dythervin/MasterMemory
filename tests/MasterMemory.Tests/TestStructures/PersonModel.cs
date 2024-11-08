@@ -1,21 +1,17 @@
-﻿using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MemoryPack;
 
-namespace MasterMemory.Tests.TestStructures
+namespace MasterMemory.Tests
 {
-
-    [MemoryTable("people"), MessagePackObject(true)]
-    public class PersonModel
+    [Table("people"), MemoryPackable]
+    public partial struct PersonModel
     {
-        [SecondaryKey(0), NonUnique]
-        [SecondaryKey(1, keyOrder: 1), NonUnique]
-        public string LastName { get; set; }
-
-        [SecondaryKey(2), NonUnique]
-        [SecondaryKey(1, keyOrder: 0), NonUnique]
+        [SecondaryKey()]
+        [SecondaryKey(1)]
         public string FirstName { get; set; }
+
+        [SecondaryKey()]
+        [SecondaryKey(1)]
+        public string LastName { get; set; }
 
         [PrimaryKey] public string RandomId { get; set; }
     }

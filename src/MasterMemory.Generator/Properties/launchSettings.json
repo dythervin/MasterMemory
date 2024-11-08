@@ -1,8 +1,10 @@
-{
+﻿{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "MasterMemory.Generator": {
-      "commandName": "Project",
-      "commandLineArgs": "-i \"C:\\GitHubRepositories\\MasterMemory\\sandbox\\COnsoleApp\" -o \"C:\\GitHubRepositories\\MasterMemory\\sandbox\\ConsoleApp\\Generated\" -n ConsoleApp"
+    "DebugRoslynSourceGenerator": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "../../tests/MasterMemory.Tests/MasterMemory.Tests.csproj"
+//      "targetProject": "../../sandbox/ConsoleApp/ConsoleApp.csproj"
     }
   }
 }

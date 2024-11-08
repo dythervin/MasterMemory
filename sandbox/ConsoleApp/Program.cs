@@ -10,43 +10,21 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text;
 using System.Globalization;
+using MasterMemory.Validation;
 
-// IValidatable‚ğÀ‘•‚·‚é‚ÆŒŸØ‘ÎÛ‚É‚È‚é
-[MemoryTable("quest_master"), MessagePackObject(true)]
-public class Quest : IValidatable<Quest>
+// IValidatableï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÆŒï¿½ï¿½Ø‘ÎÛ‚É‚È‚ï¿½
+[Table("quest_master"), MessagePackObject(true)]
+public class Quest
 {
-    // UniqueKey‚Ìê‡‚ÍValidate‚ÉƒfƒtƒHƒ‹ƒg‚Åd•¡‚©‚ÌŒŸØ‚ª‚³‚ê‚é
+    // UniqueKeyï¿½Ìê‡ï¿½ï¿½Validateï¿½ï¿½ï¿½Éƒfï¿½tï¿½Hï¿½ï¿½ï¿½gï¿½Ådï¿½ï¿½ï¿½ï¿½ï¿½ÌŒï¿½ï¿½Ø‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     [PrimaryKey]
     public int Id { get; set; }
     public string Name { get; set; }
+    
+    [SecondaryKey]
     public int RewardId { get; set; }
     public int Cost { get; set; }
     public MyEnum MyProperty { get; set; }
-
-    void IValidatable<Quest>.Validate(IValidator<Quest> validator)
-    {
-        // ŠO•”ƒL[“I‚ÉQÆ‚µ‚½‚¢ƒRƒŒƒNƒVƒ‡ƒ“‚ğæ‚èo‚¹‚é
-        var items = validator.GetReferenceSet<Item>();
-
-        // RewardId‚ª0ˆÈã‚Ì‚Æ‚«(0‚Í•ñVƒiƒV‚Ì‚½‚ß‚Ì“Á•Ê‚Èƒtƒ‰ƒO‚Æ‚·‚é‚½‚ß“ü—Í‚ğ‹–—e‚·‚é)
-        if (this.RewardId > 0)
-        {
-            // Items‚Ìƒ}ƒXƒ^‚É•K‚¸ŠÜ‚Ü‚ê‚Ä‚È‚¯‚ê‚ÎŒŸØƒGƒ‰[iƒGƒ‰[‚ªo‚Ä‚à‘±s‚Í‚µ‚Ä‚·‚×‚Ä‚ÌŒŸØŒ‹‰Ê‚ğo‚·)
-            items.Exists(x => x.RewardId, x => x.ItemId);
-        }
-
-        // ƒRƒXƒg‚Í10..20‚Å‚È‚¯‚ê‚ÎŒŸØƒGƒ‰[
-        validator.Validate(x => x.Cost >= 10);
-        validator.Validate(x => x.Cost <= 20);
-
-        // ˆÈ‰º‚ÅˆÍ‚Á‚½•”•ª‚Íˆê“x‚µ‚©ŒÄ‚Î‚ê‚È‚¢‚½‚ßAƒf[ƒ^ƒZƒbƒg‘S‘Ì‚ÌŒŸØ‚ğ‚µ‚½‚¢‚Ég‚¦‚é
-        if (validator.CallOnce())
-        {
-            var quests = validator.GetTableSet();
-            // ƒCƒ“ƒfƒbƒNƒX¶¬‚µ‚½‚à‚ÌˆÈŠO‚Ìƒ†ƒj[ƒN‚Ç‚¤‚©‚ÌŒŸØ(0‚Íd•¡‚·‚é‚½‚ßœ‚¢‚Ä‚¨‚­)
-            quests.Where(x => x.RewardId != 0).Unique(x => x.RewardId);
-        }
-    }
 
     public enum MyEnum
     {
@@ -54,14 +32,36 @@ public class Quest : IValidatable<Quest>
     }
 }
 
-[MemoryTable("item"), MessagePackObject(true)]
+[Validator]
+internal partial class QuestValidator
+{
+    public void Validate(IDatabase db, IValidator validator)
+    {
+        // ï¿½Oï¿½ï¿½ï¿½Lï¿½[ï¿½Iï¿½ÉQï¿½Æ‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½Nï¿½Vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½oï¿½ï¿½ï¿½ï¿½
+        var items = db.ItemTable;
+        var quests = db.QuestmasterTable;
+
+        // RewardIdï¿½ï¿½0ï¿½Èï¿½Ì‚Æ‚ï¿½(0ï¿½Í•ï¿½Vï¿½iï¿½Vï¿½Ì‚ï¿½ï¿½ß‚Ì“ï¿½ï¿½Ê‚Èƒtï¿½ï¿½ï¿½Oï¿½Æ‚ï¿½ï¿½é‚½ï¿½ß“ï¿½ï¿½Í‚ï¿½ï¿½ï¿½ï¿½eï¿½ï¿½ï¿½ï¿½)
+        validator.Exists(quests.GetAllSortedByRewardId(), items.GetAllSorted(), x => x > 0);
+
+        // ï¿½Rï¿½Xï¿½gï¿½ï¿½10..20ï¿½Å‚È‚ï¿½ï¿½ï¿½ÎŒï¿½ï¿½ØƒGï¿½ï¿½ï¿½[
+        validator.Validate(quests, x => x.Cost >= 10);
+        validator.Validate(quests, x => x.Cost <= 20);
+
+        // ï¿½È‰ï¿½ï¿½ÅˆÍ‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Íˆï¿½xï¿½ï¿½ï¿½ï¿½ï¿½Ä‚Î‚ï¿½È‚ï¿½ï¿½ï¿½ï¿½ßAï¿½fï¿½[ï¿½^ï¿½Zï¿½bï¿½gï¿½Sï¿½Ì‚ÌŒï¿½ï¿½Ø‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Égï¿½ï¿½ï¿½ï¿½
+        // ï¿½Cï¿½ï¿½ï¿½fï¿½bï¿½Nï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÌˆÈŠOï¿½Ìƒï¿½ï¿½jï¿½[ï¿½Nï¿½Ç‚ï¿½ï¿½ï¿½ï¿½ÌŒï¿½ï¿½ï¿½(0ï¿½Ídï¿½ï¿½ï¿½ï¿½ï¿½é‚½ï¿½ßï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½)
+        validator.Unique(quests, x => x.RewardId, x => x != 0);
+    }
+}
+
+[Table("item"), MessagePackObject(true)]
 public class Item
 {
     [PrimaryKey]
     public int ItemId { get; set; }
 }
 
-namespace ConsoleApp.Tables
+namespace ConsoleApp
 {
     public sealed partial class MonsterTable
     {
@@ -70,14 +70,14 @@ namespace ConsoleApp.Tables
 
         partial void OnAfterConstruct()
         {
-            maxHp = All.Select(x => x.MaxHp).Max();
+            maxHp = GetAll().Max(x => x.MaxHp);
         }
     }
 }
 
 namespace ConsoleApp
 {
-    [MemoryTable("monster"), MessagePackObject(true)]
+    [Table("monster"), MessagePackObject(true)]
     public class Monster
     {
         [PrimaryKey]
@@ -93,7 +93,7 @@ namespace ConsoleApp
         }
     }
 
-    [MemoryTable("enumkeytable"), MessagePackObject(true)]
+    [Table("enumkeytable"), MessagePackObject(true)]
     public class EnumKeyTable
     {
         [PrimaryKey]
@@ -105,16 +105,16 @@ namespace ConsoleApp
         Male, Female
     }
 
-    [MemoryTable("person"), MessagePackObject(true)]
+    [Table("person"), MessagePackObject(true)]
     public class Person
     {
         [PrimaryKey(keyOrder: 1)]
         public int PersonId { get; set; }
-        [SecondaryKey(0), NonUnique]
-        [SecondaryKey(2, keyOrder: 1), NonUnique]
+        [SecondaryKey(0)]
+        [SecondaryKey(2, keyOrder: 1)]
         public int Age { get; set; }
-        [SecondaryKey(1), NonUnique]
-        [SecondaryKey(2, keyOrder: 0), NonUnique]
+        [SecondaryKey(1)]
+        [SecondaryKey(2, keyOrder: 0)]
         public Gender Gender { get; set; }
         public string Name { get; set; }
 
@@ -191,7 +191,7 @@ namespace ConsoleApp
         }
     }
 
-    [MemoryTable(nameof(Test1))]
+    [Table(nameof(Test1))]
     public class Test1
     {
         [PrimaryKey]
@@ -199,7 +199,7 @@ namespace ConsoleApp
     }
 
     [MessagePackObject(false)]
-    [MemoryTable(nameof(Test2))]
+    [Table(nameof(Test2))]
     public class Test2
     {
         [PrimaryKey]
@@ -219,7 +219,7 @@ namespace ConsoleApp
 
             var builder = new DatabaseBuilder();
 
-            var meta = MemoryDatabase.GetMetaDatabase();
+            var meta = Database.GetMetaDatabase();
             var table = meta.GetTableInfo(fileName);
 
             var tableData = new List<object>();
@@ -232,7 +232,7 @@ namespace ConsoleApp
                 {
                     // create data without call constructor
                     var data = System.Runtime.Serialization.FormatterServices.GetUninitializedObject(table.DataType);
-
+    
                     foreach (var prop in table.Properties)
                     {
                         if (values.TryGetValue(prop.NameSnakeCase, out var rawValue))
@@ -249,16 +249,16 @@ namespace ConsoleApp
                             throw new KeyNotFoundException($"Not found \"{prop.NameSnakeCase}\" in \"{fileName}.csv\" header.");
                         }
                     }
-
+    
                     tableData.Add(data);
                 }
             }
-
+    
             // add dynamic collection.
             builder.AppendDynamic(table.DataType, tableData);
-
-            var bin = builder.Build();
-            var database = new MemoryDatabase(bin, maxDegreeOfParallelism: Environment.ProcessorCount);
+    
+            var database = builder.Build();
+            database.Transaction.MaxDegreeOfParallelism = Environment.ProcessorCount;
         }
 
         static object ParseValue(Type type, string rawValue)

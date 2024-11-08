@@ -1,94 +1,138 @@
 ﻿using System;
-using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
+using System.Collections.Generic;
+using System.Text;
 
 namespace MasterMemory.Validation
 {
-    internal class Validator<T> : IValidator<T>
+    public class Validator : IValidator
     {
-        readonly ValidationDatabase database;
-        readonly T item;
-        readonly ValidateResult resultSet;
-        readonly StrongBox<bool> onceCalled;
-        readonly string pkName;
-        readonly Delegate pkSelector;
+        private readonly ValidateResult _resultSet;
 
-        public Validator(ValidationDatabase database, T item, ValidateResult resultSet, StrongBox<bool> onceCalled, string pkName, Delegate pkSelector)
+        public Validator(ValidateResult resultSet)
         {
-            this.database = database;
-            this.item = item;
-            this.resultSet = resultSet;
-            this.onceCalled = onceCalled;
-            this.pkName = pkName;
-            this.pkSelector = pkSelector;
+            _resultSet = resultSet;
         }
 
-        public bool CallOnce()
+        public void Sequential<TKey, TElement, T>(in RangeView<T, TKey, TElement> values, Func<T, T> getPrevious,
+            bool distinct)
         {
-            if (!onceCalled.Value)
+            if (values.Count == 0)
+                return;
+
+            for (int i = 1; i < values.Count; i++)
             {
-                onceCalled.Value = true;
-                return true;
-            }
+                T currentKey = values.GetKeys(i).key;
+                T previousKey = values.GetKeys(i - 1).key;
+                if (!distinct && EqualityComparer<T>.Default.Equals(currentKey, previousKey))
+                    continue;
 
-            return false;
-        }
-
-        public ValidatableSet<T> GetTableSet()
-        {
-            return new ValidatableSet<T>(database.GetTable<T>(), resultSet, pkName, pkSelector);
-        }
-
-        public ReferenceSet<T, TRef> GetReferenceSet<TRef>()
-        {
-            var table = database.GetTable<TRef>();
-            return new ReferenceSet<T, TRef>(item, table, resultSet, pkName, pkSelector);
-        }
-
-        public void Validate(Expression<Func<T, bool>> predicate)
-        {
-            if (!predicate.Compile(true).Invoke(item))
-            {
-                var memberValues = ExpressionDumper<T>.DumpMemberValues(item, predicate);
-                var message = string.Format($"{predicate.ToThisBodyString()}, {memberValues}, {BuildPkMessage()}");
-                resultSet.AddFail(typeof(T), "Validate failed: " + message, item);
+                if (!EqualityComparer<T>.Default.Equals(getPrevious(currentKey), previousKey))
+                {
+                    _resultSet.AddFail(typeof(TElement),
+                        $"Sequential failed: {values.KeyName} = ({previousKey}, {currentKey}), {BuildPkMessage(values.Table, values[i])}",
+                        currentKey);
+                }
             }
         }
 
-        public void Validate(Func<T, bool> predicate, string message)
+        public void Exists<TKey, TElement, TElement2, TMainKey1, TMainKey2>(
+            in RangeView<TKey, TMainKey1, TElement> values, in RangeView<TKey, TMainKey2, TElement2> existInView,
+            Predicate<TKey>? predicate = null)
         {
-            if (!predicate(item))
+            predicate ??= _ => true;
+            StringBuilder? sb = null;
+            for (int i = 0; i < values.Count; i++)
             {
-                resultSet.AddFail(typeof(T), "Validate failed: " + message + ", " + BuildPkMessage(), item);
+                var key = values.GetKeys(i).key;
+                if (!predicate(key))
+                    continue;
+
+                if (!existInView.ContainsKey(key))
+                {
+                    sb ??= new StringBuilder();
+                    sb.Clear();
+                    sb.Append("Exists failed: ").Append(values.ElementName).Append('.').Append(values.KeyName)
+                        .Append(" -> ").Append(existInView.ElementName).Append('.').Append(existInView.KeyName)
+                        .Append(", value = ").Append(key).Append(", ").Append(BuildPkMessage(values.Table, values[i]));
+
+                    _resultSet.AddFail(typeof(TElement), sb.ToString(), key);
+                    sb.Clear();
+                }
             }
         }
 
-        public void ValidateAction(Expression<Func<bool>> predicate)
+        public TableValidator<TKey, TElement> GetTableValidator<TKey, TElement>(ITable<TKey, TElement> table)
         {
-            if (!predicate.Compile(true).Invoke())
+            return new TableValidator<TKey, TElement>(table, this);
+        }
+
+        public void Validate<TKey, T>(ITable<TKey, T> table, Func<T, bool> predicate,
+            Func<T, string>? messageFunc = null)
+        {
+            var rangeView = table.GetAllSorted();
+            foreach (T item in rangeView)
             {
-                var expr = predicate.Body.ToString();
-                resultSet.AddFail(typeof(T), "ValidateAction failed: " + expr + ", " + BuildPkMessage(), item);
+                if (!predicate(item))
+                {
+                    string? message = null;
+                    if (messageFunc != null)
+                    {
+                        message = messageFunc(item);
+                        if (message != null)
+                            message += ", ";
+                    }
+
+                    _resultSet.AddFail(typeof(T), "Validate failed: " + message + BuildPkMessage(table, item), item);
+                }
             }
         }
 
-        public void ValidateAction(Func<bool> predicate, string message)
+        public void ValidateAction<TKey, T>(ITable<TKey, T> table, Func<T, bool> predicate,
+            Func<T, string>? messageFunc = null)
         {
-            if (!predicate())
+            foreach (T item in table.GetAllSorted())
             {
-                resultSet.AddFail(typeof(T), "ValidateAction failed: " + message + ", " + BuildPkMessage(), item);
+                if (!predicate(item))
+                {
+                    string? message = null;
+                    if (messageFunc != null)
+                    {
+                        message = messageFunc(item);
+                        if (message != null)
+                            message += ", ";
+                    }
+
+                    _resultSet.AddFail(typeof(T),
+                        "ValidateAction failed: " + message + BuildPkMessage(table, item),
+                        item);
+                }
             }
         }
 
-        public void Fail(string message)
+        public void Unique<TKey, TElement, T>(ITable<TKey, TElement> table, Func<TElement, T> keySelector,
+            Predicate<T>? predicate = null)
         {
-            resultSet.AddFail(typeof(T), message + ", " + BuildPkMessage(), item);
+            predicate ??= _ => true;
+            var set = new HashSet<T>();
+            foreach (TElement item in table.GetAllSorted())
+            {
+                T key = keySelector(item);
+                if (!predicate(key))
+                    continue;
+
+                if (!set.Add(key))
+                {
+                    _resultSet.AddFail(typeof(TElement),
+                        "Unique failed: value = " + key + ", " + BuildPkMessage(table, item),
+                        item);
+                }
+            }
         }
 
-        string BuildPkMessage()
+        string BuildPkMessage<TKey, T>(ITable<TKey, T> table, in T item)
         {
-            var pk = pkSelector.DynamicInvoke(item).ToString();
-            return $"PK({pkName}) = {pk}";
+            var pk = table.KeySelector(item).ToString();
+            return $"PK({table.KeyName}) = {pk}";
         }
     }
 }

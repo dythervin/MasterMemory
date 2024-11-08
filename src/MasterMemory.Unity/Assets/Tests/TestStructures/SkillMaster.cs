@@ -1,9 +1,9 @@
-using MessagePack;
+using MemoryPack;
 
 namespace MasterMemory.Tests
 {
-    [MemoryTable("skillmaster"), MessagePackObject(true)]
-    public class SkillMaster
+    [Table("skillmaster"), MemoryPackable]
+    public partial class SkillMaster
     {
         [PrimaryKey]
         public int SkillId { get; set; }
@@ -12,11 +12,6 @@ namespace MasterMemory.Tests
         public int AttackPower { get; set; }
         public string SkillName { get; set; }
         public string Description { get; set; }
-
-        public SkillMaster()
-        {
-
-        }
 
         public SkillMaster(int SkillId, int SkillLevel, int AttackPower, string SkillName, string Description)
         {

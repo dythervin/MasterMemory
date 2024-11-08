@@ -7,11 +7,13 @@ using System.Threading.Tasks;
 using MessagePack;
 using LiteDB;
 using MasterMemory;
+using MessagePack;
+using MemoryPack;
 
 namespace TestPerfLiteDB
 {
-    [MemoryTable("TestDoc"), MessagePackObject(true)]
-    public class TestDoc
+    [Table("TestDoc"), MessagePackObject(true), MemoryPackable]
+    public partial class TestDoc
     {
         [PrimaryKey]
         public int id { get; set; }
@@ -21,13 +23,6 @@ namespace TestPerfLiteDB
         public TestDoc()
         {
 
-        }
-
-        public TestDoc(int id, string name, string lorem)
-        {
-            this.id = id;
-            this.name = name;
-            this.lorem = lorem;
         }
     }
 

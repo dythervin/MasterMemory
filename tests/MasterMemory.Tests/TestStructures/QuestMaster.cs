@@ -1,114 +1,98 @@
-﻿using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using MasterMemory.Validation;
+using MemoryPack;
 
-namespace MasterMemory.Tests.TestStructures
+namespace MasterMemory.Tests
 {
-    [MemoryTable("quest_master"), MessagePackObject(true)]
-    public class QuestMaster : IValidatable<QuestMaster>
+    [Table("quest_master"), MemoryPackable]
+    public partial record QuestMaster
     {
         [PrimaryKey]
         public int QuestId { get; set; }
+
+        [UniqueKey]
         public string Name { get; set; }
+
+        [SecondaryKey]
         public int RewardItemId { get; set; }
-        public int Cost { get; set; }
 
-        public void Validate(IValidator<QuestMaster> validator)
-        {
-            var itemMaster = validator.GetReferenceSet<ItemMaster>();
-
-            itemMaster.Exists(x => x.RewardItemId, x => x.ItemId);
-
-            validator.Validate(x => x.Cost <= 100);
-            validator.Validate(x => x.Cost >= 0, ">= 0!!!");
-
-            validator.ValidateAction(() => this.Cost <= 1000);
-            validator.ValidateAction(() => this.Cost >= -90, ">= -90!!!");
-
-            if (validator.CallOnce())
-            {
-                var quests = validator.GetTableSet();
-                quests.Unique(x => x.Name);
-            }
-        }
-    }
-
-    [MemoryTable("item_master"), MessagePackObject(true)]
-    public class ItemMaster : IValidatable<ItemMaster>
-    {
-        [PrimaryKey]
-        public int ItemId { get; set; }
-
-        public void Validate(IValidator<ItemMaster> validator)
-        {
-        }
-    }
-
-    [MemoryTable("quest_master_empty"), MessagePackObject(true)]
-    public class QuestMasterEmptyValidate
-    {
-        [PrimaryKey]
-        public int QuestId { get; set; }
-        public string Name { get; set; }
-        public int RewardItemId { get; set; }
         public int Cost { get; set; }
     }
 
-    [MemoryTable("item_master_empty"), MessagePackObject(true)]
-    public class ItemMasterEmptyValidate
+    [Validator]
+    internal partial class QuestMasterValidator
+    {
+        public void Validate(IDatabase db, IValidator validator)
+        {
+            
+            validator.Exists(db.QuestmasterTable.GetAllSortedByRewardItemId(),
+                db.ItemmasterTable.GetAllSortedByItemId());
+
+            var helper = validator.GetTableValidator(db.QuestmasterTable);
+            helper.Validate(x => x.Cost <= 100, x => "Cost <= 100, Cost = " + x.Cost);
+            helper.Validate(x => x.Cost >= 0, x => ">= 0!!!");
+            helper.ValidateAction(x => x.Cost <= 1000, x => "Cost <= 1000, Cost = " + x.Cost);
+            helper.ValidateAction(x => x.Cost >= -90, x => ">= -90!!!");
+            helper.Unique(x => x.Name);
+        }
+    }
+
+    [Table("item_master"), MemoryPackable]
+    public partial class ItemMaster
     {
         [PrimaryKey]
         public int ItemId { get; set; }
     }
 
-    [MemoryTable("sequantial_master"), MessagePackObject(true)]
-    public class SequentialCheckMaster : IValidatable<SequentialCheckMaster>
+    [Table("quest_master_empty"), MemoryPackable]
+    public partial class QuestMasterEmptyValidate
+    {
+        [PrimaryKey]
+        public int QuestId { get; set; }
+
+        public string Name { get; set; }
+
+        public int RewardItemId { get; set; }
+
+        public int Cost { get; set; }
+    }
+
+    [Table("item_master_empty"), MemoryPackable]
+    public partial class ItemMasterEmptyValidate
+    {
+        [PrimaryKey]
+        public int ItemId { get; set; }
+    }
+
+    [Table("sequantial_master"), MemoryPackable]
+    [Validator]
+    public partial class SequentialCheckMaster
     {
         [PrimaryKey]
         public int Id { get; set; }
+
+        [SecondaryKey]
         public int Cost { get; set; }
 
-        public void Validate(IValidator<SequentialCheckMaster> validator)
+        public void Validate(IDatabase db, IValidator validator)
         {
-            if (validator.CallOnce())
-            {
-                var set = validator.GetTableSet();
-
-                set.Sequential(x => x.Id);
-                set.Sequential(x => x.Cost, true);
-            }
+            validator.Sequential(db.SequantialmasterTable.GetAllSortedById());
+            validator.Sequential(db.SequantialmasterTable.GetAllSortedByCost());
         }
     }
 
-    [MemoryTable("single_master"), MessagePackObject(true)]
-    public class SingleMaster : IValidatable<SingleMaster>
+    [Table("fail"), MemoryPackable]
+    public partial class Fail
     {
-        public static int CalledValidateCount;
-        public static int CalledOnceCount;
-
         [PrimaryKey]
         public int Id { get; set; }
-
-        public void Validate(IValidator<SingleMaster> validator)
-        {
-            CalledValidateCount++;
-            if (validator.CallOnce())
-            {
-                CalledOnceCount++;
-            }
-        }
     }
 
-    [MemoryTable("fail"), MessagePackObject(true)]
-    public class Fail : IValidatable<Fail>
+    [Validator]
+    internal partial class FailValidator
     {
-        [PrimaryKey]
-        public int Id { get; set; }
-
-        public void Validate(IValidator<Fail> validator)
+        public void Validate(IDatabase db, IValidator validator)
         {
-            validator.Fail("Failed Id:" + Id);
+            validator.Validate(db.FailTable, x => false, x => "Id: " + x.Id);
         }
     }
 }

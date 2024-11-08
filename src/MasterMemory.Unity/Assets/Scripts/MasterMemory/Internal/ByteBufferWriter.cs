@@ -3,7 +3,7 @@ using System.Buffers;
 
 namespace MasterMemory
 {
-    internal class ByteBufferWriter : IBufferWriter<byte>
+    public class ByteBufferWriter : IBufferWriter<byte>
     {
         byte[] buffer;
         int index;

@@ -1,16 +1,14 @@
-using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using MemoryPack;
 
-namespace MasterMemory.Tests.TestStructures
+namespace MasterMemory.Tests
 {
-    [MessagePackObject(true)]
-    [MemoryTable(nameof(TestMaster))]
-    public class TestMaster
+    [MemoryPackable]
+    [Table(nameof(TestMaster))]
+    public partial class TestMaster
     {
-        [PrimaryKey, NonUnique]
+        [PrimaryKey]
         public int TestID { get; set; }
+
         public int Value { get; set; }
 
         public TestMaster(int TestID, int Value)

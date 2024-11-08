@@ -6,16 +6,16 @@ namespace MasterMemory.Validation
 {
     public class ValidateResult
     {
-        List<FaildItem> result = new List<FaildItem>();
+        private readonly List<FaildItem> _result = new List<FaildItem>();
 
-        public bool IsValidationFailed => result.Count != 0;
+        public bool IsValidationFailed => _result.Count != 0;
 
-        public IReadOnlyList<FaildItem> FailedResults => result;
+        public IReadOnlyList<FaildItem> FailedResults => _result;
 
         public string FormatFailedResults()
         {
             var sb = new StringBuilder();
-            foreach (var item in result)
+            foreach (var item in _result)
             {
                 sb.AppendLine(item.Type.FullName + " - " + item.Message);
             }
@@ -24,21 +24,15 @@ namespace MasterMemory.Validation
 
         internal void AddFail(Type type, string message, object data)
         {
-            result.Add(new FaildItem(type, message, data));
+            _result.Add(new FaildItem(type, message, data));
         }
-    }
-
-    public readonly struct FaildItem
-    {
-        public FaildItem(Type type, string message, object data)
+        
+        public void Validate<T>(bool condition, in T data, string message = "")
         {
-            Type = type;
-            Message = message;
-            Data = data;
+            if (!condition)
+            {
+                AddFail(typeof(T), message, data);
+            }
         }
-
-        public Type Type { get; }
-        public string Message { get; }
-        public object Data { get; }
     }
 }

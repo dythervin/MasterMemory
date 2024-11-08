@@ -1,9 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFramework>netstandard2.1</TargetFramework>
         <RootNamespace>MasterMemory</RootNamespace>
         <AssemblyName>MasterMemory</AssemblyName>
+        <LangVersion>9</LangVersion>
+        <Nullable>enable</Nullable>
 
         <OutputType>Library</OutputType>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
@@ -29,10 +31,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\MasterMemory.Annotations\MasterMemory.Annotations.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
         <None Update="Validation\ValidatableSet.Sequential.tt">
             <Generator>TextTemplatingFileGenerator</Generator>
             <LastGenOutput>ValidatableSet.Sequential.cs</LastGenOutput>
@@ -53,16 +51,17 @@
     <PropertyGroup>
         <DestinationRoot>$(ProjectDir)..\MasterMemory.Unity\Assets\Scripts\MasterMemory\</DestinationRoot>
         <TestDestination>$(ProjectDir)..\MasterMemory.Unity\Assets\Tests\</TestDestination>
+        <TestDestination2>$(ProjectDir)..\MasterMemory.Unity\Assets\Tests2\</TestDestination2>
     </PropertyGroup>
     <ItemGroup>
         <TargetFiles1 Include="$(ProjectDir)\**\*.cs" Exclude="**\bin\**\*.*;**\obj\**\*.*;_InternalVisibleTo.cs" />
-        <TargetFiles2 Include="$(ProjectDir)\..\MasterMemory.Annotations\**\*.cs" Exclude="**\bin\**\*.*;**\obj\**\*.*;" />
         <TargetFiles3 Include="$(ProjectDir)\..\..\tests\MasterMemory.Tests\**\*.cs" Exclude="**\bin\**\*.*;**\obj\**\*.*;" />
+        <TargetFiles4 Include="$(ProjectDir)\..\..\tests\MasterMemory.Tests2\**\*.cs" Exclude="**\bin\**\*.*;**\obj\**\*.*;" />
     </ItemGroup>
     <Target Name="PostBuild" AfterTargets="PostBuildEvent">
         <Copy SourceFiles="@(TargetFiles1)" DestinationFiles="$(DestinationRoot)\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
-        <Copy SourceFiles="@(TargetFiles2)" DestinationFiles="$(DestinationRoot)\Annotations\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
         <Copy SourceFiles="@(TargetFiles3)" DestinationFiles="$(TestDestination)\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
+        <Copy SourceFiles="@(TargetFiles4)" DestinationFiles="$(TestDestination2)\%(RecursiveDir)%(Filename)%(Extension)" SkipUnchangedFiles="true" />
     </Target>
 
 </Project>

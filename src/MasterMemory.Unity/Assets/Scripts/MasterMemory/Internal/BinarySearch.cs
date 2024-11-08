@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace MasterMemory.Internal
+namespace MasterMemory
 {
-    internal static class BinarySearch
+    public static class BinarySearch
     {
-        public static int FindFirst<T, TKey>(T[] array, TKey key, Func<T, TKey> selector, IComparer<TKey> comparer)
+        public static int FindFirst<TKey>(TKey[] array, TKey key, IComparer<TKey> comparer)
         {
             var lo = 0;
             var hi = array.Length - 1;
@@ -13,33 +12,7 @@ namespace MasterMemory.Internal
             while (lo <= hi)
             {
                 var mid = (int)(((uint)hi + (uint)lo) >> 1);
-                var found = comparer.Compare(selector(array[mid]), key);
-
-                if (found == 0) return mid;
-                if (found < 0)
-                {
-                    lo = mid + 1;
-                }
-                else
-                {
-                    hi = mid - 1;
-                }
-            }
-
-            return -1;
-        }
-
-        public static int FindFirstIntKey<T>(T[] array, int key, Func<T, int> selector)
-        {
-            var lo = 0;
-            var hi = array.Length - 1;
-
-            while (lo <= hi)
-            {
-                var mid = (int)(((uint)hi + (uint)lo) >> 1);
-                // compare inlining
-                var selectedValue = selector(array[mid]);
-                var found = (selectedValue < key) ? -1 : (selectedValue > key) ? 1 : 0;
+                var found = comparer.Compare(array[mid], key);
 
                 if (found == 0) return mid;
                 if (found < 0)
@@ -56,7 +29,7 @@ namespace MasterMemory.Internal
         }
 
         // lo = 0, hi = Count.
-        public static int FindClosest<T, TKey>(T[] array, int lo, int hi, TKey key, Func<T, TKey> selector, IComparer<TKey> comparer, bool selectLower)
+        public static int FindClosest<TKey>(TKey[] array, int lo, int hi, TKey key, IComparer<TKey> comparer, bool selectLower)
         {
             if (array.Length == 0) return -1;
 
@@ -65,7 +38,7 @@ namespace MasterMemory.Internal
             while (hi - lo > 1)
             {
                 var mid = lo + ((hi - lo) >> 1);
-                var found = comparer.Compare(selector(array[mid]), key);
+                var found = comparer.Compare(array[mid], key);
 
                 if (found == 0)
                 {
@@ -86,12 +59,12 @@ namespace MasterMemory.Internal
         }
 
         // default lo = 0, hi = array.Count
-        public static int LowerBound<T, TKey>(T[] array, int lo, int hi, TKey key, Func<T, TKey> selector, IComparer<TKey> comparer)
+        public static int LowerBound<TKey>(TKey[] array, int lo, int hi, TKey key, IComparer<TKey> comparer)
         {
             while (lo < hi)
             {
                 var mid = lo + ((hi - lo) >> 1);
-                var found = comparer.Compare(key, selector(array[mid]));
+                var found = comparer.Compare(key, array[mid]);
 
                 if (found <= 0)
                 {
@@ -110,17 +83,17 @@ namespace MasterMemory.Internal
             }
 
             // check final
-            return (comparer.Compare(key, selector(array[index])) == 0)
+            return comparer.Compare(key, array[index]) == 0
                 ? index
                 : -1;
         }
 
-        public static int UpperBound<T, TKey>(T[] array, int lo, int hi, TKey key, Func<T, TKey> selector, IComparer<TKey> comparer)
+        public static int UpperBound<TKey>(TKey[] array, int lo, int hi, TKey key, IComparer<TKey> comparer)
         {
             while (lo < hi)
             {
                 var mid = lo + ((hi - lo) >> 1);
-                var found = comparer.Compare(key, selector(array[mid]));
+                var found = comparer.Compare(key, array[mid]);
 
                 if (found >= 0)
                 {
@@ -132,14 +105,14 @@ namespace MasterMemory.Internal
                 }
             }
 
-            var index = (lo == 0) ? 0 : lo - 1;
+            var index = lo == 0 ? 0 : lo - 1;
             if (index == -1 || array.Length <= index)
             {
                 return -1;
             }
 
             // check final
-            return (comparer.Compare(key, selector(array[index])) == 0)
+            return comparer.Compare(key, array[index]) == 0
                 ? index
                 : -1;
         }
@@ -149,12 +122,12 @@ namespace MasterMemory.Internal
         //... returns 0 if key is <= all values in array
         //... returns array.Length if key is > all values in array
 
-        public static int LowerBoundClosest<T, TKey>(T[] array, int lo, int hi, TKey key, Func<T, TKey> selector, IComparer<TKey> comparer)
+        public static int LowerBoundClosest<TKey>(TKey[] array, int lo, int hi, TKey key, IComparer<TKey> comparer)
         {
             while (lo < hi)
             {
                 var mid = lo + ((hi - lo) >> 1);
-                var found = comparer.Compare(key, selector(array[mid]));
+                var found = comparer.Compare(key, array[mid]);
 
                 if (found <= 0)     //... Key is <= value at mid
                 {
@@ -174,7 +147,7 @@ namespace MasterMemory.Internal
             }
 
             // check final
-            return (comparer.Compare(key, selector(array[index])) <= 0)
+            return comparer.Compare(key, array[index]) <= 0
                 ? index
                 : -1;
         }
@@ -184,12 +157,12 @@ namespace MasterMemory.Internal
         //... returns -1 if key is < than all values in array
         //... returns array.Length - 1 if key is >= than all values in array
 
-        public static int UpperBoundClosest<T, TKey>(T[] array, int lo, int hi, TKey key, Func<T, TKey> selector, IComparer<TKey> comparer)
+        public static int UpperBoundClosest<TKey>(TKey[] array, int lo, int hi, TKey key, IComparer<TKey> comparer)
         {
             while (lo < hi)
             {
                 var mid = lo + ((hi - lo) >> 1);
-                var found = comparer.Compare(key, selector(array[mid]));
+                var found = comparer.Compare(key, array[mid]);
 
                 if (found >= 0)     //... Key >= value at mid
                 {
@@ -201,7 +174,7 @@ namespace MasterMemory.Internal
                 }
             }
 
-            var index = (lo == 0) ? 0 : lo - 1;   //... index will always be zero or greater
+            var index = lo == 0 ? 0 : lo - 1;   //... index will always be zero or greater
 
             if ( index >= array.Length )
             {
@@ -209,7 +182,7 @@ namespace MasterMemory.Internal
             }
 
             // check final
-            return (comparer.Compare(key, selector(array[index])) >= 0)
+            return comparer.Compare(key, array[index]) >= 0
                 ? index
                 : -1;
         }

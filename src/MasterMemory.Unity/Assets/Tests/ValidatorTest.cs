@@ -1,9 +1,4 @@
-﻿using MasterMemory.Tests.TestStructures;
-using FluentAssertions;
-using MessagePack;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using FluentAssertions;
 using Xunit;
 using System.Linq;
 
@@ -17,66 +12,38 @@ namespace MasterMemory.Tests
         public ValidatorTest()
         {
             this.output = new Xunit.Abstractions.DebugLogTestOutputHelper();
-            MessagePackSerializer.DefaultOptions = MessagePackSerializer.DefaultOptions.WithResolver(MessagePackResolver.Instance);
         }
 #else
         public ValidatorTest(Xunit.Abstractions.ITestOutputHelper output)
         {
             this.output = output;
-            MessagePackSerializer.DefaultOptions = MessagePackSerializer.DefaultOptions.WithResolver(MessagePackResolver.Instance);
+            //MessagePackSerializer.DefaultOptions = MessagePackSerializer.DefaultOptions.WithResolver(MessagePackResolver.Instance);
         }
 #endif
 
-        MemoryDatabase CreateDatabase(Fail[] data1)
+        Database CreateDatabase(Fail[] data1)
         {
-
-            var bin = new DatabaseBuilder()
-                .Append(data1)
-                .Build();
-
-            return new MemoryDatabase(bin, internString: false);
+            return new Database(failTable: data1);
         }
 
-        MemoryDatabase CreateDatabase(SingleMaster[] data1)
+        Database CreateDatabase(SequentialCheckMaster[] data1)
         {
-
-            var bin = new DatabaseBuilder()
-                .Append(data1)
-                .Build();
-
-            return new MemoryDatabase(bin, internString: false);
+            return new Database(sequantialmasterTable: data1);
         }
 
-        MemoryDatabase CreateDatabase(SequentialCheckMaster[] data1)
+        Database CreateDatabase(QuestMaster[] data1, ItemMaster[] data2)
         {
 
-            var bin = new DatabaseBuilder()
-                .Append(data1)
-                .Build();
-
-            return new MemoryDatabase(bin, internString: false);
-        }
-
-        MemoryDatabase CreateDatabase(QuestMaster[] data1, ItemMaster[] data2)
-        {
-
-            var bin = new DatabaseBuilder()
+            return new DatabaseBuilder()
                 .Append(data1)
                 .Append(data2)
                 .Build();
-
-            return new MemoryDatabase(bin, internString: false);
         }
 
-        MemoryDatabase CreateDatabase(QuestMasterEmptyValidate[] data1, ItemMasterEmptyValidate[] data2)
+        Database CreateDatabase(QuestMasterEmptyValidate[] data1, ItemMasterEmptyValidate[] data2)
         {
 
-            var bin = new DatabaseBuilder()
-                .Append(data1)
-                .Append(data2)
-                .Build();
-
-            return new MemoryDatabase(bin, internString: false);
+            return new Database(questmasteremptyTable: data1, itemmasteremptyTable: data2);
         }
 
         [Fact]
@@ -90,31 +57,6 @@ namespace MasterMemory.Tests
 
             validateResult.IsValidationFailed.Should().BeFalse();
             validateResult.FailedResults.Count.Should().Be(0);
-        }
-
-        [Fact]
-        public void PKUnique()
-        {
-            var validateResult = CreateDatabase(new QuestMasterEmptyValidate[]
-            {
-                new QuestMasterEmptyValidate { QuestId = 1 },
-                new QuestMasterEmptyValidate { QuestId = 2 },
-                new QuestMasterEmptyValidate { QuestId = 1 },
-                new QuestMasterEmptyValidate { QuestId = 4 },
-                new QuestMasterEmptyValidate { QuestId = 4 },
-            }, new ItemMasterEmptyValidate[]
-            {
-                new ItemMasterEmptyValidate { ItemId = 1 },
-                new ItemMasterEmptyValidate { ItemId = 2 },
-                new ItemMasterEmptyValidate { ItemId = 2 },
-            }).Validate();
-            output.WriteLine(validateResult.FormatFailedResults());
-
-            validateResult.IsValidationFailed.Should().BeTrue();
-            validateResult.FailedResults.Count.Should().Be(3); // Q:1,4 + I:2
-            validateResult.FailedResults[0].Message.Should().Be("Unique failed: QuestId, value = 1");
-            validateResult.FailedResults[1].Message.Should().Be("Unique failed: QuestId, value = 4");
-            validateResult.FailedResults[2].Message.Should().Be("Unique failed: ItemId, value = 2");
         }
 
         // test IValidator
@@ -156,29 +98,32 @@ namespace MasterMemory.Tests
             output.WriteLine(validateResult.FormatFailedResults());
             validateResult.IsValidationFailed.Should().BeTrue();
 
-            validateResult.FailedResults[0].Message.Should().Be("Exists failed: QuestMaster.RewardItemId -> ItemMaster.ItemId, value = 5, PK(QuestId) = 4");
-            validateResult.FailedResults[1].Message.Should().Be("Exists failed: QuestMaster.RewardItemId -> ItemMaster.ItemId, value = 4, PK(QuestId) = 5");
+            validateResult.FailedResults[0].Message.Should().Be("Exists failed: QuestMaster.RewardItemId -> ItemMaster.ItemId, value = 4, PK(QuestId) = 5");
+            validateResult.FailedResults[1].Message.Should().Be("Exists failed: QuestMaster.RewardItemId -> ItemMaster.ItemId, value = 5, PK(QuestId) = 4");
         }
 
         [Fact]
         public void Unique()
         {
-            var validateResult = CreateDatabase(new QuestMaster[]
+            using var db = new Database();
+            db.Transaction(transaction =>
             {
-                new QuestMaster { QuestId = 1, Name = "foo" },
-                new QuestMaster { QuestId = 2, Name = "bar" },
-                new QuestMaster { QuestId = 3, Name = "bar" },
-                new QuestMaster { QuestId = 4, Name = "tako" },
-                new QuestMaster { QuestId = 5, Name = "foo" },
-            }, new ItemMaster[]
-            {
-                new ItemMaster { ItemId = 0 }
-            }).Validate();
-            output.WriteLine(validateResult.FormatFailedResults());
-            validateResult.IsValidationFailed.Should().BeTrue();
+                transaction.InsertOrReplace(
+                    new QuestMaster[]
+                    {
+                        new QuestMaster { QuestId = 1, Name = "foo" },
+                        new QuestMaster { QuestId = 2, Name = "bar" },
+                        new QuestMaster { QuestId = 3, Name = "bar" },
+                        new QuestMaster { QuestId = 4, Name = "tako" },
+                        new QuestMaster { QuestId = 5, Name = "foo" },
+                    });
+            });
 
-            validateResult.FailedResults[0].Message.Should().Be("Unique failed: .Name, value = bar, PK(QuestId) = 3");
-            validateResult.FailedResults[1].Message.Should().Be("Unique failed: .Name, value = foo, PK(QuestId) = 5");
+            var all = db.QuestmasterTable.GetAllSorted();
+            all.Count.Should().Be(3);
+            all[0].QuestId.Should().Be(3);
+            all[1].QuestId.Should().Be(4);
+            all[2].QuestId.Should().Be(5);
         }
 
         [Fact]
@@ -206,25 +151,9 @@ namespace MasterMemory.Tests
                 output.WriteLine(validateResult.FormatFailedResults());
                 validateResult.IsValidationFailed.Should().BeTrue();
 
-                validateResult.FailedResults[0].Message.Should().Be("Sequential failed: .Id, value = (3, 5), PK(Id) = 5");
-                validateResult.FailedResults[1].Message.Should().Be("Sequential failed: .Cost, value = (11, 13), PK(Id) = 5");
+                validateResult.FailedResults[0].Message.Should().Be("Sequential failed: Id = (3, 5), PK(Id) = 5");
+                validateResult.FailedResults[1].Message.Should().Be("Sequential failed: Cost = (11, 13), PK(Id) = 5");
             }
-        }
-
-        [Fact]
-        public void CallOnce()
-        {
-            _ = CreateDatabase(new SingleMaster[]
-            {
-                new SingleMaster { Id = 1},
-                new SingleMaster { Id = 2},
-                new SingleMaster { Id = 3},
-                new SingleMaster { Id = 4},
-            }).Validate();
-
-
-            SingleMaster.CalledValidateCount.Should().Be(4);
-            SingleMaster.CalledOnceCount.Should().Be(1);
         }
 
         [Fact]
@@ -245,34 +174,43 @@ namespace MasterMemory.Tests
             }).Validate();
             output.WriteLine(validateResult.FormatFailedResults());
             validateResult.IsValidationFailed.Should().BeTrue();
+            validateResult.FailedResults.Count.Should().Be(2);
 
-            validateResult.FailedResults[0].Message.Should().Be("Validate failed: >= 0!!!, PK(QuestId) = 1");
-            validateResult.FailedResults[1].Message.Should().Be("Validate failed: (this.Cost <= 100), Cost = 101, PK(QuestId) = 4");
+            validateResult.FailedResults[0].Message.Should().Be("Validate failed: Cost <= 100, Cost = 101, PK(QuestId) = 4");
+            validateResult.FailedResults[1].Message.Should().Be("Validate failed: >= 0!!!, PK(QuestId) = 1");
         }
 
         [Fact]
         public void ValidateAction()
         {
-            var validateResult = CreateDatabase(new QuestMaster[]
-             {
-                new QuestMaster { QuestId = 1, RewardItemId = 1, Name = "foo", Cost = -100 },
-                new QuestMaster { QuestId = 2, RewardItemId = 3, Name = "bar", Cost = 99 },
-                new QuestMaster { QuestId = 3, RewardItemId = 2, Name = "baz", Cost = 100 },
-                new QuestMaster { QuestId = 4, RewardItemId = 3, Name = "tao", Cost = 1001 },
-                new QuestMaster { QuestId = 5, RewardItemId = 3, Name = "nao", Cost = 33 },
-             }, new ItemMaster[]
-             {
-                new ItemMaster { ItemId = 1 },
-                new ItemMaster { ItemId = 2 },
-                new ItemMaster { ItemId = 3 },
-             }).Validate();
+            using var db = new Database();
+            
+            db.Transaction(transaction =>
+            {
+                transaction.InsertOrReplace(new QuestMaster[]
+                {
+                    new QuestMaster { QuestId = 1, RewardItemId = 1, Name = "foo", Cost = -100 },
+                    new QuestMaster { QuestId = 2, RewardItemId = 3, Name = "bar", Cost = 99 },
+                    new QuestMaster { QuestId = 3, RewardItemId = 2, Name = "baz", Cost = 100 },
+                    new QuestMaster { QuestId = 4, RewardItemId = 3, Name = "tao", Cost = 1001 },
+                    new QuestMaster { QuestId = 5, RewardItemId = 3, Name = "nao", Cost = 33 },
+                });
+                transaction.InsertOrReplace(new ItemMaster[]
+                {
+                    new ItemMaster { ItemId = 1 },
+                    new ItemMaster { ItemId = 2 },
+                    new ItemMaster { ItemId = 3 },
+                });
+            });
+
+            var validateResult = db.Validate();
             output.WriteLine(validateResult.FormatFailedResults());
             validateResult.IsValidationFailed.Should().BeTrue();
 
             var results = validateResult.FailedResults.Select(x => x.Message).Where(x => x.Contains("ValidateAction faile")).ToArray();
 
-            results[0].Should().Be("ValidateAction failed: >= -90!!!, PK(QuestId) = 1");
-            results[1].Should().Be("ValidateAction failed: (value(MasterMemory.Tests.TestStructures.QuestMaster).Cost <= 1000), PK(QuestId) = 4");
+            results[0].Should().Be("ValidateAction failed: Cost <= 1000, Cost = 1001, PK(QuestId) = 4");
+            results[1].Should().Be("ValidateAction failed: >= -90!!!, PK(QuestId) = 1");
         }
 
         [Fact]
@@ -288,9 +226,9 @@ namespace MasterMemory.Tests
             validateResult.IsValidationFailed.Should().BeTrue();
 
             var msg = validateResult.FailedResults.Select(x => x.Message).ToArray();
-            msg[0].Should().Be("Failed Id:1, PK(Id) = 1");
-            msg[1].Should().Be("Failed Id:2, PK(Id) = 2");
-            msg[2].Should().Be("Failed Id:3, PK(Id) = 3");
+            msg[0].Should().Be("Validate failed: Id: 1, PK(Id) = 1");
+            msg[1].Should().Be("Validate failed: Id: 2, PK(Id) = 2");
+            msg[2].Should().Be("Validate failed: Id: 3, PK(Id) = 3");
         }
     }
 }

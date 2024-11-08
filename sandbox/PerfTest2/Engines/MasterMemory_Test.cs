@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MemoryPack;
 
 namespace TestPerfLiteDB
 {
@@ -13,7 +14,7 @@ namespace TestPerfLiteDB
         private string _filename;
         private int _count;
 
-        MemoryDatabase database;
+        readonly Database database;
 
         public int Count { get { return _count; } }
         public int FileLength { get { return (int)new FileInfo(_filename).Length; } }
@@ -22,7 +23,7 @@ namespace TestPerfLiteDB
         {
             _count = count;
             _filename = "mastermemorydatabase-" + Guid.NewGuid().ToString("n") + ".db";
-
+            database = new Database();
         }
 
         public IEnumerable<TestDoc> MakeDoc()
@@ -42,11 +43,11 @@ namespace TestPerfLiteDB
 
         public void Insert()
         {
-            var builder = new DatabaseBuilder();
-            builder.Append(MakeDoc());
-            var saved = builder.Build();
-            File.WriteAllBytes(_filename, saved);
-            database = new MemoryDatabase(saved);
+            database.Transaction(transaction =>
+            {
+                transaction.Insert(MakeDoc());
+            });
+            File.WriteAllBytes(_filename, MemoryPackSerializer.Serialize(database));
         }
 
         public void Bulk()
@@ -61,7 +62,7 @@ namespace TestPerfLiteDB
 
         public void Dispose()
         {
-
+            database.Dispose();
         }
 
         public void Prepare()
@@ -74,13 +75,19 @@ namespace TestPerfLiteDB
             for (var i = 0; i < _count; i++)
             {
                 //TestDoc d;
-                database.TestDocTable.FindByid(i);
+                database.TestDocTable.GetById(i);
             }
         }
 
         public void Update()
         {
-
+            database.Transaction(transaction =>
+            {
+                foreach (var doc in MakeDoc())
+                {
+                    transaction.Replace(doc);
+                }
+            });
         }
     }
 }

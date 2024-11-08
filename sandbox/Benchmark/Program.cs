@@ -23,6 +23,7 @@ using Enyim.Caching.Memcached.Transcoders;
 using RocksDbSharp;
 using MessagePack;
 using System.Text;
+using MasterMemory;
 
 namespace Benchmark
 {
@@ -55,7 +56,7 @@ namespace Benchmark
     [Config(typeof(BenchmarkConfig))]
     public class SimpleRun
     {
-        MemoryDatabase db;
+        Database db;
         SQLite_Test sqliteMemory;
         SQLite_Test sqliteFile;
 
@@ -73,8 +74,7 @@ namespace Benchmark
 
         public SimpleRun()
         {
-            var bin = new DatabaseBuilder().Append(MakeDoc(5000)).Build();
-            db = new MemoryDatabase(bin);
+            db = new Database(MakeDoc(5000).ToArray());
 
             sqliteMemory = new SQLite_Test(5000, null, false, true);
             sqliteMemory.Prepare(); sqliteMemory.Insert(); sqliteMemory.CreateIndex();
@@ -135,7 +135,7 @@ namespace Benchmark
         [Benchmark(Baseline = true)]
         public TestDoc MasterMemoryQuery()
         {
-            return db.TestDocTable.FindByid(QueryId);
+            return db.TestDocTable.GetById(QueryId);
         }
 
         [Benchmark]

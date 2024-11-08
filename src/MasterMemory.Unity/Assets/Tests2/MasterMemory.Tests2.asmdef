@@ -1,0 +1,21 @@
+{
+    "name": "MasterMemory.Tests2",
+    "rootNamespace": "",
+    "references": [
+        "MasterMemory",
+        "MemoryPack.Unity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "MemoryPack.Core.dll",
+        "UniRx.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

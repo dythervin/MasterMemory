@@ -7,12 +7,13 @@ using System.Text;
 using System.Threading.Tasks;
 using LiteDB;
 using MasterMemory;
+using MemoryPack;
 using MessagePack;
 
 namespace TestPerfLiteDB
 {
-    [MemoryTable("TestDoc"), MessagePackObject(true)]
-    public class TestDoc
+    [Table("TestDoc"), MessagePackObject(true), MemoryPackable]
+    public partial class TestDoc
     {
         [PrimaryKey]
         public int id { get; set; }
