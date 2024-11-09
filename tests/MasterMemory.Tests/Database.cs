@@ -1,7 +1,8 @@
-namespace MasterMemory.Tests
+using MasterMemory.Annotations;
+
+namespace MasterMemory
 {
-    [Database(DatabaseFlags.R3 | DatabaseFlags.UniRx | DatabaseFlags.MemoryPack | DatabaseFlags.SystemTextJson |
-              DatabaseFlags.NewtonsoftJson)]
+    [Database]
     public partial class Database
     {
     }

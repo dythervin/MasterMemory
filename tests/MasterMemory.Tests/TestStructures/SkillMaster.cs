@@ -1,3 +1,4 @@
+using MasterMemory.Annotations;
 using MemoryPack;
 
 namespace MasterMemory.Tests

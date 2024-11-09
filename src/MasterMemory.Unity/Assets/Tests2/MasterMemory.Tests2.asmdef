@@ -1,8 +1,8 @@
 {
     "name": "MasterMemory.Tests2",
-    "rootNamespace": "",
     "references": [
         "MasterMemory",
+        "MasterMemory.Annotations",
         "MemoryPack.Unity"
     ],
     "includePlatforms": [],

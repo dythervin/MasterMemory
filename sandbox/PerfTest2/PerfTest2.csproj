@@ -15,7 +15,8 @@
   </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\MasterMemory.Generator\MasterMemory.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\..\src\MasterMemory.Annotations\MasterMemory.Annotations.csproj" />
+        <ProjectReference Include="..\..\src\MasterMemory.Generator.Incremental\MasterMemory.Generator.Incremental.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\..\src\MasterMemory\MasterMemory.csproj" />
     </ItemGroup>
 

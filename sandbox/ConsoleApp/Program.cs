@@ -10,6 +10,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Text;
 using System.Globalization;
+using MasterMemory.Annotations;
 using MasterMemory.Validation;
 
 // IValidatable����������ƌ��ؑΏۂɂȂ�

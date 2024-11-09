@@ -1,4 +1,5 @@
-﻿using MasterMemory.Validation;
+﻿using MasterMemory.Annotations;
+using MasterMemory.Validation;
 using MemoryPack;
 
 namespace MasterMemory.Tests

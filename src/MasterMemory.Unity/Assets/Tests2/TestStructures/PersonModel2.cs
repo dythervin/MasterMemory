@@ -1,4 +1,5 @@
 ﻿using MemoryPack;
+using MasterMemory.Annotations;
 
 namespace MasterMemory.Tests2.TestStructures
 {

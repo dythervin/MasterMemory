@@ -11,7 +11,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sandbox", "sandbox", "{FFAA
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MasterMemory", "src\MasterMemory\MasterMemory.csproj", "{D2720BBB-C233-4A1E-9768-1F00C9602180}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMemory.Generator", "src\MasterMemory.Generator\MasterMemory.Generator.csproj", "{5BB2DC62-41C2-4AEC-BF82-82EF08FE1CF9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MasterMemory.Annotations", "src\MasterMemory.Annotations\MasterMemory.Annotations.csproj", "{A13F40DD-7777-4E97-9FC4-6324722CA964}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMemory.Generator.Incremental", "src\MasterMemory.Generator.Incremental\MasterMemory.Generator.Incremental.csproj", "{5BB2DC62-41C2-4AEC-BF82-82EF08FE1CF9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MasterMemory.Tests", "tests\MasterMemory.Tests\MasterMemory.Tests.csproj", "{8C5EBACA-C6C7-463B-B85C-C6A05E5DEB9F}"
 EndProject
@@ -22,6 +24,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PerfTest2", "sandbox\PerfTest2\PerfTest2.csproj", "{AA5B5485-C42E-449C-843A-98A99A0D10B2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMemory.Tests2", "tests\MasterMemory.Tests2\MasterMemory.Tests2.csproj", "{9F1ED64E-5DEF-42CA-B227-ABE9FC65C825}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMemory.Generator.Core", "src\MasterMemory.Generator.Core\MasterMemory.Generator.Core.csproj", "{F302C9DD-1715-433B-B0CC-29EBF1D998B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MasterMemory.Generator.Simple", "src\MasterMemory.Generator.Simple\MasterMemory.Generator.Simple.csproj", "{8915682E-1C87-4056-A9D5-AE2917AF8BAC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -55,6 +61,16 @@ Global
 		{9F1ED64E-5DEF-42CA-B227-ABE9FC65C825}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F1ED64E-5DEF-42CA-B227-ABE9FC65C825}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F1ED64E-5DEF-42CA-B227-ABE9FC65C825}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F302C9DD-1715-433B-B0CC-29EBF1D998B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F302C9DD-1715-433B-B0CC-29EBF1D998B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F302C9DD-1715-433B-B0CC-29EBF1D998B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F302C9DD-1715-433B-B0CC-29EBF1D998B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8915682E-1C87-4056-A9D5-AE2917AF8BAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8915682E-1C87-4056-A9D5-AE2917AF8BAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8915682E-1C87-4056-A9D5-AE2917AF8BAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8915682E-1C87-4056-A9D5-AE2917AF8BAC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A13F40DD-7777-4E97-9FC4-6324722CA964}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A13F40DD-7777-4E97-9FC4-6324722CA964}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,6 +83,9 @@ Global
 		{AA5B5485-C42E-449C-843A-98A99A0D10B2} = {FFAA235C-D30F-4958-BC4E-60CD08979464}
 		{5BB2DC62-41C2-4AEC-BF82-82EF08FE1CF9} = {60662102-4523-441E-8D6C-D87A3246C648}
 		{9F1ED64E-5DEF-42CA-B227-ABE9FC65C825} = {BDAFF1CB-8E53-412B-B389-42A15343C7A3}
+		{F302C9DD-1715-433B-B0CC-29EBF1D998B4} = {60662102-4523-441E-8D6C-D87A3246C648}
+		{8915682E-1C87-4056-A9D5-AE2917AF8BAC} = {60662102-4523-441E-8D6C-D87A3246C648}
+		{A13F40DD-7777-4E97-9FC4-6324722CA964} = {60662102-4523-441E-8D6C-D87A3246C648}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0121A3C4-6AE0-4622-BE04-05D9A3E729AC}

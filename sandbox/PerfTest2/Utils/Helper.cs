@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using LiteDB;
 using MasterMemory;
+using MasterMemory.Annotations;
 using MemoryPack;
 using MessagePack;
 
