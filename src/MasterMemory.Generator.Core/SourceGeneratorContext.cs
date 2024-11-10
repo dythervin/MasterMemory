@@ -1,9 +1,10 @@
 using System;
-using System.Text;
 using MasterMemory.Generator.Core.Internal;
 using Microsoft.CodeAnalysis;
 
 namespace MasterMemory.Generator.Core;
+
+
 
 public readonly ref struct SourceGeneratorContext
 {
@@ -20,32 +21,21 @@ public readonly ref struct SourceGeneratorContext
         _simpleProductionContext = simpleProductionContext;
     }
 
-    public void AddSource(string fileName, string source)
+    public static implicit operator SourceGeneratorContext(SourceProductionContext generatorContext)
     {
-        if (_incrementalProductionContext != null)
-        {
-            _incrementalProductionContext.Value.AddSource(fileName, source);
-        }
-        else if (_simpleProductionContext != null)
-        {
-            _simpleProductionContext.Value.AddSource(fileName, source);
-        }
-        else
-        {
-            throw new InvalidOperationException("Invalid context.");
-        }
+        return new(generatorContext);
     }
 
-    public void AddSource(string fileName, StringBuilder sb)
+    public static implicit operator SourceGeneratorContext(GeneratorExecutionContext generatorContext)
     {
-        AddSource(fileName, SourceTextFormatter.FormatCompilationUnit(sb.ToStringAndClear()).ToFullString());
+        return new(generatorContext);
     }
 
-    public static implicit operator SourceGeneratorContext(SourceProductionContext generatorContext) =>
-        new(generatorContext);
-
-    public static implicit operator SourceGeneratorContext(GeneratorExecutionContext generatorContext) =>
-        new(generatorContext);
+    public void AddSource(string fileName, string str,
+        SourceGeneratorFlags flags = SourceGeneratorFlags.NormalizeWhitespace | SourceGeneratorFlags.SortMembers)
+    {
+        AddSourceInternal(fileName, SourceTextFormatter.FormatCompilationUnit(str, flags));
+    }
 
     public void ReportDiagnostic(Diagnostic create)
     {
@@ -56,6 +46,22 @@ public readonly ref struct SourceGeneratorContext
         else if (_simpleProductionContext != null)
         {
             _simpleProductionContext.Value.ReportDiagnostic(create);
+        }
+        else
+        {
+            throw new InvalidOperationException("Invalid context.");
+        }
+    }
+
+    private void AddSourceInternal(string fileName, string source)
+    {
+        if (_incrementalProductionContext != null)
+        {
+            _incrementalProductionContext.Value.AddSource(fileName, source);
+        }
+        else if (_simpleProductionContext != null)
+        {
+            _simpleProductionContext.Value.AddSource(fileName, source);
         }
         else
         {

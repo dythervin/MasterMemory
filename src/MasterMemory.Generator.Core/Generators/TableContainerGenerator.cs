@@ -87,6 +87,6 @@ internal static class TableContainerGenerator
             }
         }
 
-        context.AddSource($"{Name}.g.cs",sb);
+        context.AddSource($"Db.{Name}.g.cs", sb.ToStringAndClear());
     }
 }

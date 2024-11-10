@@ -298,11 +298,13 @@ public partial class DatabaseSourceGenerator
             DatabaseGenerator.Execute(context, tableArray, validatorArray, database, sb);
             DatabaseSerializationGenerator.Execute(context, tableArray, database, sb);
             DatabaseExtensionsGenerator.Execute(context, tableArray, database, sb);
+            DatabaseReactiveExtensionsGenerator.Execute(context, tableArray, database, sb);
 
             TableContainerGenerator.Execute(context, tableArray, database, sb);
             TransactionGenerator.Execute(context, tableArray, database, sb);
+            ObservableDbValueGenerator.Execute(context, database, sb);
             DatabaseJsonConvertorGenerator.Execute(context, tableArray, database, sb);
-            TransactionObserverGenerator.Execute(context, database, sb);
+            DbItemObserverGenerator.Execute(context, database, sb);
             DatabaseBuilderGenerator.Execute(context, tableArray, database, sb);
             ValidatorGenerator.Execute(context, database, sb);
             MemoryPackFormatterGenerator.Execute(context, database, parseOptionsModel, sb);

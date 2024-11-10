@@ -44,7 +44,7 @@ internal static class DatabaseSerializationGenerator
             }
         }
 
-        context.AddSource($"{database.Name}.Serialization.g.cs",sb);
+        context.AddSource($"Db.{database.Name}.Serialization.g.cs", sb.ToStringAndClear());
     }
 
     private static void AppendJsonSerialization(this StringBuilder sb, DatabaseModel database)

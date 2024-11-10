@@ -49,7 +49,7 @@ internal static class DatabaseJsonConvertorGenerator
             sb.Replace("reader.GetString()", "reader.Value.ToString()");
         }
 
-        context.AddSource($"{name}JsonConvertor.g.cs", sb);
+        context.AddSource($"Db.{name}JsonConvertor.g.cs", sb.ToStringAndClear());
     }
 
     private static void AppendRead(this StringBuilder sb, ImmutableArray<TableModel> tableArray, DatabaseModel database,

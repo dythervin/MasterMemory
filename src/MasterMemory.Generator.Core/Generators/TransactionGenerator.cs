@@ -28,7 +28,7 @@ internal static class TransactionGenerator
                        }).BracketScope())
             {
                 sb.AppendLine(
-                    $"private readonly IReadOnlyDictionary<System.Type, I{TransactionObserverGenerator.Name}> _observers;");
+                    $"private readonly IReadOnlyDictionary<System.Type, I{DbItemObserverGenerator.Name}> _observers;");
 
                 sb.AppendLine("private TableContainer _container;");
                 if (isMultithreaded)
@@ -47,7 +47,9 @@ internal static class TransactionGenerator
                         sb.AppendLine("get => _maxDegreeOfParallelism;");
                         using (sb.AppendLine("set").BracketScope())
                         {
-                            sb.AppendLine("if (value < 1) throw new System.ArgumentOutOfRangeException(nameof(value));");
+                            sb.AppendLine(
+                                "if (value < 1) throw new System.ArgumentOutOfRangeException(nameof(value));");
+
                             sb.AppendLine("_maxDegreeOfParallelism = value;");
                         }
                     }
@@ -55,14 +57,15 @@ internal static class TransactionGenerator
 
                 foreach (TableModel model in tableArray)
                 {
-                    sb.Append("private readonly TransactionValueObserver<").Append(model.GlobalTypeName).Append("> _")
-                        .AppendDecapitalized(model.TableName).AppendLine("Observer;");
+                    sb.Append($"private readonly {DbItemObserverGenerator.Name}<").Append(model.GlobalTypeName)
+                        .Append("> _").AppendDecapitalized(model.TableName).AppendLine("Observer;");
 
                     sb.AppendOperations(model);
                     sb.AppendOperations(model, "Insert");
                     sb.AppendOperations(model, "InsertOrReplace");
                     sb.AppendOperations(model, "Replace");
                     sb.AppendOperations(model, "Remove");
+                    sb.AppendRemoveByKey(model);
                     using (sb.Append("void IDbTransaction<").Append(model.GlobalTypeName).Append(">.Clear()")
                                .BracketScope())
                     {
@@ -112,7 +115,7 @@ internal static class TransactionGenerator
                         sb.AppendLine("_maxDegreeOfParallelism = maxDegreeOfParallelism;");
                     }
 
-                    sb.AppendLine($"_observers = new Dictionary<System.Type, I{TransactionObserverGenerator.Name}>(")
+                    sb.AppendLine($"_observers = new Dictionary<System.Type, I{DbItemObserverGenerator.Name}>(")
                         .Append(tableArray.Length).AppendLine(")");
 
                     using (sb.BracketScope())
@@ -123,7 +126,7 @@ internal static class TransactionGenerator
                             {
                                 sb.Append("{ typeof(").Append(model.GlobalTypeName).Append("), ").Append("this._")
                                     .AppendDecapitalized(model.TableName)
-                                    .Append($"Observer = new {TransactionObserverGenerator.Name}<")
+                                    .Append($"Observer = new {DbItemObserverGenerator.Name}<")
                                     .Append(model.GlobalTypeName).AppendLine(">()}");
                             });
                     }
@@ -154,10 +157,10 @@ internal static class TransactionGenerator
                     }
                 }
 
-                sb.AppendLine($"public I{TransactionObserverGenerator.Name}<T> GetObserver<T>()");
+                sb.AppendLine($"public I{DbItemObserverGenerator.Name}<T> GetObserver<T>()");
                 using (sb.BracketScope())
                 {
-                    sb.Append($"return (I{TransactionObserverGenerator.Name}<T>)this._observers[typeof(T)];");
+                    sb.Append($"return (I{DbItemObserverGenerator.Name}<T>)this._observers[typeof(T)];");
                 }
 
                 if (isMultithreaded)
@@ -167,7 +170,8 @@ internal static class TransactionGenerator
                         sb.Append("this.RunOnThreadPool(action, CancellationToken.None);");
                     }
 
-                    using (sb.Append("private void RunOnThreadPool(System.Action action, CancellationToken cancellationToken)")
+                    using (sb.Append(
+                                   "private void RunOnThreadPool(System.Action action, CancellationToken cancellationToken)")
                                .BracketScope())
                     {
                         if (database.HasFlag(DatabaseFlags.UniTask))
@@ -321,7 +325,7 @@ internal static class TransactionGenerator
             }
         }
 
-        context.AddSource($"{Name}.g.cs", sb);
+        context.AddSource($"Db.Transaction.g.cs", sb.ToStringAndClear());
     }
 
     private static StringBuilder AppendOperations(this StringBuilder sb, TableModel model, string? operation = null)
@@ -418,6 +422,75 @@ internal static class TransactionGenerator
             }
 
             sb.Append("if (changed == 0) return 0;");
+
+            if (isMultithreaded)
+                sb.Append("this.TryScheduleKeysSort();");
+
+            sb.AppendLine("return changed;");
+        }
+
+        return sb;
+    }
+
+    private static StringBuilder AppendRemoveByKey(this StringBuilder sb, TableModel model)
+    {
+        bool isMultithreaded = model.IsMultithreadedModifications;
+
+        KeyGroupModel primaryKey = model.PrimaryKey;
+        using (sb.Append("public bool Remove").Append(model.TypeName).Append("By").Append(primaryKey.Name).Append("(")
+                   .Append(primaryKey.Modifier).Append(" ").Append(primaryKey.Type).Append(" key)").BracketScope())
+        {
+            sb.AppendLine("AssertCanExecuteOperations();");
+
+            sb.Append("if(!this._container.").Append(model.TableName).AppendLine(".Remove(").Append(primaryKey.Modifier)
+                .Append(" key)) return false;");
+
+            if (isMultithreaded)
+                sb.Append("this.TryScheduleKeysSort();");
+
+            sb.AppendLine("return true;");
+        }
+
+        using (sb.Append("public int Remove").Append(model.TypeName).Append("By").Append(primaryKey.Name).Append("(")
+                   .Append(" IReadOnlyList<").Append(primaryKey.Type).Append("> keys)").BracketScope())
+        {
+            sb.AppendLine("AssertCanExecuteOperations();");
+            sb.AppendLine("if(keys.Count == 0) return 0;");
+
+            sb.AppendLine("int changed = 0;");
+            using (sb.Append("for (int i = 0; i < keys.Count; i++)").BracketScope())
+            {
+                sb.Append("if(!this._container.").Append(model.TableName).AppendLine(".Remove(")
+                    .Append(primaryKey.Modifier).Append(" keys[i])) continue;");
+
+                sb.AppendLine("changed++;");
+            }
+
+            sb.AppendLine("if (changed == 0) return 0;");
+
+            if (isMultithreaded)
+                sb.Append("this.TryScheduleKeysSort();");
+
+            sb.AppendLine("return changed;");
+        }
+
+        using (sb.Append("public int Remove").Append(model.TypeName).Append("By").Append(primaryKey.Name).Append("(")
+                   .Append(" IEnumerable<").Append(primaryKey.Type).Append("> keys)").BracketScope())
+        {
+            sb.AppendLine("AssertCanExecuteOperations();");
+            sb.AppendLine("if (keys is IReadOnlyList<").Append(primaryKey.Type).Append("> list) return ")
+                .Append("Remove").Append(model.TypeName).Append("By").Append(primaryKey.Name).Append("(list);");
+
+            sb.AppendLine("int changed = 0;");
+            using (sb.Append("foreach (var key in keys)").BracketScope())
+            {
+                sb.Append("if(!this._container.").Append(model.TableName).AppendLine(".Remove(")
+                    .Append(primaryKey.Modifier).Append(" key)) continue;");
+
+                sb.AppendLine("changed++;");
+            }
+
+            sb.AppendLine("if (changed == 0) return 0;");
 
             if (isMultithreaded)
                 sb.Append("this.TryScheduleKeysSort();");

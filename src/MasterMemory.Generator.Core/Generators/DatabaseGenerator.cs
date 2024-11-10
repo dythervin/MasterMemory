@@ -16,13 +16,13 @@ internal static class DatabaseGenerator
         using (sb.NamespaceScope(database.Namespace))
         {
             sb.Append(database.AccessibilityModifier);
-            using (sb.Append(" interface I").Append(name).BracketScope())
+            using (sb.Append(" interface I").Append(name).Append(" : IDatabaseBase").BracketScope())
             {
                 sb.AppendMembers(tableArray, true);
             }
         }
 
-        context.AddSource($"I{name}.g.cs", sb);
+        context.AddSource($"Db.I{name}.g.cs", sb.ToStringAndClear());
 
         sb.AppendUsings(tableArray[0].DatabaseModel);
         using (sb.NamespaceScope(database.Namespace))
@@ -58,7 +58,7 @@ internal static class DatabaseGenerator
             }
         }
 
-        context.AddSource($"{name}.g.cs", sb);
+        context.AddSource($"Db.{name}.g.cs", sb.ToStringAndClear());
     }
 
     private static StringBuilder AppendValidation(this StringBuilder sb, ImmutableArray<ValidatorModel> validatorArray)
@@ -187,18 +187,34 @@ internal static class DatabaseGenerator
 
         sb.Append("public IReadOnlyList<ITable> Tables ");
         sb.AppendLine(isInterface ? "{ get; }" : "=> this._container;");
-
-        sb.AppendLine("public ITable GetTable(string tableName)");
-
-        if (isInterface)
         {
-            sb.AppendLine(";");
-        }
-        else
-        {
-            using (sb.BracketScope())
+            sb.AppendLine("public ITable GetTable(string tableName)");
+
+            if (isInterface)
             {
-                sb.AppendLine("return this._container.GetTable(tableName);");
+                sb.AppendLine(";");
+            }
+            else
+            {
+                using (sb.BracketScope())
+                {
+                    sb.AppendLine("return this._container.GetTable(tableName);");
+                }
+            }
+        }
+
+        {
+            sb.AppendLine($"public I{DbItemObserverGenerator.Name}<T> GetObserver<T>()");
+            if (isInterface)
+            {
+                sb.AppendLine(";");
+            }
+            else
+            {
+                using (sb.BracketScope())
+                {
+                    sb.Append("return this.Transaction.GetObserver<T>();");
+                }
             }
         }
 

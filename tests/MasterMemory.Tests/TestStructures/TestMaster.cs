@@ -8,9 +8,9 @@ namespace MasterMemory.Tests
     public partial class TestMaster
     {
         [PrimaryKey]
-        public int TestID { get; set; }
+        public int TestID { get; init; }
 
-        public int Value { get; set; }
+        public int Value { get; init; }
 
         public TestMaster(int TestID, int Value)
         {

@@ -62,8 +62,6 @@ public class SampleSourceGenerator : ISourceGenerator
         var parseOptions =
             new ParseOptionsModel(((CSharpParseOptions)compilation.SyntaxTrees.First().Options).LanguageVersion);
 
-        context.AddSource("foo", "//foo");
-
         DatabaseSourceGenerator.GenerateDatabase(context,
             tableModels,
             databaseModel,

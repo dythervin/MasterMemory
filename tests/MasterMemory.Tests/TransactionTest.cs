@@ -8,27 +8,27 @@ namespace MasterMemory.Tests
     public class TransactionTest
     {
         [Fact]
-        public void Transaction()
+        public void TransactionInsert()
         {
             using var db = new Database();
 
             db.Transaction(transaction =>
             {
-                transaction.InsertOrReplace(new PersonModel
+                transaction.Insert(new PersonModel
                 {
                     FirstName = "ccc",
                     LastName = "ddd",
                     RandomId = "2"
                 });
 
-                transaction.InsertOrReplace(new PersonModel
+                transaction.Insert(new PersonModel
                 {
                     FirstName = "aaa",
                     LastName = "bbb",
                     RandomId = "1"
                 });
 
-                transaction.InsertOrReplace(new PersonModel
+                transaction.Insert(new PersonModel
                 {
                     FirstName = "eee",
                     LastName = "fff",
@@ -44,7 +44,7 @@ namespace MasterMemory.Tests
         }
 
         [Fact]
-        public void Transaction2()
+        public void TransactionInsertOrReplace()
         {
             using var db = new Database();
 
@@ -77,6 +77,87 @@ namespace MasterMemory.Tests
             sortedById[0].RandomId.Should().Be("1");
             sortedById[0].FirstName.Should().Be("eee");
             sortedById[1].RandomId.Should().Be("2");
+        }
+
+        [Fact]
+        public void TransactionClear()
+        {
+            using var db = new Database();
+
+            db.Transaction(transaction =>
+            {
+                transaction.InsertOrReplace(new PersonModel
+                {
+                    FirstName = "ccc",
+                    LastName = "ddd",
+                    RandomId = "2"
+                });
+
+                transaction.InsertOrReplace(new PersonModel
+                {
+                    FirstName = "aaa",
+                    LastName = "bbb",
+                    RandomId = "1"
+                });
+
+                transaction.InsertOrReplace(new PersonModel
+                {
+                    FirstName = "eee",
+                    LastName = "fff",
+                    RandomId = "3"
+                });
+                
+                transaction.ClearPeopleTable();
+            });
+
+            db.PeopleTable.Count.Should().Be(0);
+            var sortedById = db.PeopleTable.GetAllSortedByRandomId();
+            sortedById.Count.Should().Be(0);
+        }
+
+        [Fact]
+        public void TransactionRemove()
+        {
+            using var db = new Database();
+
+            db.Transaction(transaction =>
+            {
+                transaction.InsertOrReplace(new PersonModel
+                {
+                    FirstName = "ccc",
+                    LastName = "ddd",
+                    RandomId = "2"
+                });
+
+                transaction.InsertOrReplace(new PersonModel
+                {
+                    FirstName = "aaa",
+                    LastName = "bbb",
+                    RandomId = "1"
+                });
+
+                transaction.InsertOrReplace(new PersonModel
+                {
+                    FirstName = "eee",
+                    LastName = "fff",
+                    RandomId = "3"
+                });
+                
+                transaction.Insert(new PersonModel
+                {
+                    FirstName = "ggg",
+                    LastName = "hhh",
+                    RandomId = "4"
+                });
+                
+                transaction.RemovePersonModelByRandomId("4");
+                transaction.RemovePersonModelByRandomId("1");
+            });
+
+            var sortedById = db.PeopleTable.GetAllSortedByRandomId();
+            sortedById.Count.Should().Be(2);
+            sortedById[0].RandomId.Should().Be("2");
+            sortedById[1].RandomId.Should().Be("3");
         }
 
         [Fact]
@@ -151,7 +232,7 @@ namespace MasterMemory.Tests
             int i = 0;
             using var personObserver = db.Transaction.GetObserver<PersonModel>().OnCommit.Subscribe(x =>
             {
-                var item = x.Item;
+                var item = x.Value;
                 switch (i++)
                 {
                     case 0:
@@ -178,7 +259,7 @@ namespace MasterMemory.Tests
 
             using var sampleObserver = db.Transaction.GetObserver<Sample>().OnCommit.Subscribe(x =>
             {
-                var item = x.Item;
+                var item = x.Value;
                 switch (i++)
                 {
                     case 1:

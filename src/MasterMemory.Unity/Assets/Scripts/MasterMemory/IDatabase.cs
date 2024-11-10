@@ -3,8 +3,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace MasterMemory
 {
-    public interface IDatabase : IDisposable
+    public interface IDatabaseBase : IDisposable
     {
         bool TryGetTable<TKey, T>([NotNullWhen(true)] out ITable<TKey, T>? table);
+        
+        ITable<TKey, T> GetTable<TKey, T>();
     }
 }

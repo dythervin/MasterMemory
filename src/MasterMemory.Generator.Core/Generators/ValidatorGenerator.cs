@@ -21,7 +21,7 @@ internal static class ValidatorGenerator
             }
         }
 
-        context.AddSource("DbValidator.g.cs",sb);
+        context.AddSource("Db.Validator.g.cs", sb.ToStringAndClear());
     }
 
     public static void Execute(SourceGeneratorContext context, ValidatorModel model)
@@ -36,6 +36,6 @@ internal static class ValidatorGenerator
             }
         }
 
-        context.AddSource($"Validators_{model.Name}.g.cs",sb);
+        context.AddSource($"Validators.{model.Name}.g.cs", sb.ToStringAndClear());
     }
 }

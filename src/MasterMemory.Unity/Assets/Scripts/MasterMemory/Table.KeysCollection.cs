@@ -15,10 +15,10 @@ namespace MasterMemory
             private readonly IComparer<(TKey key, TMainKey? mainKey)> _comparerKeyOnly;
             private readonly string _keyName;
 
-            public KeyCollection(IReadOnlyList<TElement> items,
-                Table<TMainKey, TElement> table,
+            public KeyCollection(IReadOnlyList<TElement> items, Table<TMainKey, TElement> table,
                 KeySelector<TElement, (TKey key, TMainKey mainKey)> keySelector,
-                IComparer<(TKey key, TMainKey mainKey)> comparer, IComparer<(TKey key, TMainKey? mainKey)> comparerKeyOnly, string keyName)
+                IComparer<(TKey key, TMainKey mainKey)> comparer,
+                IComparer<(TKey key, TMainKey? mainKey)> comparerKeyOnly, string keyName)
             {
                 _comparer = comparer;
                 _comparerKeyOnly = comparerKeyOnly;
@@ -41,12 +41,18 @@ namespace MasterMemory
 
             public void Sort()
             {
-                Array.Sort(_keys, _comparer);
+                Array.Sort(_keys, 0, _count, _comparer);
             }
 
             public void Execute(in OperationChange<TElement> operationChange)
             {
-                (TKey key, TMainKey mainKey) key = _keySelector(operationChange.Item);
+                if (operationChange.Type == OperationType.Clear)
+                {
+                    _count = 0;
+                    return;
+                }
+
+                (TKey key, TMainKey mainKey) key = _keySelector(operationChange.Value);
                 switch (operationChange.Type)
                 {
                     case OperationType.Insert:
@@ -117,11 +123,6 @@ namespace MasterMemory
 
                         break;
                     }
-                    case OperationType.Clear:
-                    {
-                        _count = 0;
-                        break;
-                    }
                     case OperationType.None:
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -130,14 +131,14 @@ namespace MasterMemory
 
             private void EnsureCapacity(int capacity)
             {
-                if (_keys.Length < capacity)
-                {
-                    int newCapacity = _keys.Length == 0 ? 4 : _keys.Length * 2;
-                    if (newCapacity < capacity)
-                        newCapacity = capacity;
+                if (_keys.Length >= capacity)
+                    return;
 
-                    Array.Resize(ref _keys, newCapacity);
-                }
+                int newCapacity = _keys.Length == 0 ? 4 : _keys.Length * 2;
+                if (newCapacity < capacity)
+                    newCapacity = capacity;
+
+                Array.Resize(ref _keys, newCapacity);
             }
 
             public TElement FindUnique(TKey key)
@@ -166,13 +167,13 @@ namespace MasterMemory
 
             public RangeView<TKey, TMainKey, TElement> FindUniqueRange(TKey min, TKey max, bool ascendant)
             {
-                int lo = BinarySearch.FindClosest(_keys!, 0, _keys.Length, (min, default), _comparerKeyOnly, false);
-                int hi = BinarySearch.FindClosest(_keys!, 0, _keys.Length, (max, default), _comparerKeyOnly, true);
+                int lo = BinarySearch.FindClosest(_keys!, 0, _count, (min, default), _comparerKeyOnly, false);
+                int hi = BinarySearch.FindClosest(_keys!, 0, _count, (max, default), _comparerKeyOnly, true);
 
                 if (lo == -1)
                     lo = 0;
 
-                if (hi == _keys.Length)
+                if (hi == _count)
                     hi -= 1;
 
                 return new(_keys, lo, hi, ascendant, _table, _comparerKeyOnly, _keyName);
@@ -180,23 +181,18 @@ namespace MasterMemory
 
             public TElement? FindUniqueClosest(TKey key, bool selectLower)
             {
-                int index = BinarySearch.FindClosest(_keys!,
-                    0,
-                    _keys.Length,
-                    (key, default),
-                    _comparerKeyOnly,
-                    selectLower);
+                int index = BinarySearch.FindClosest(_keys!, 0, _count, (key, default), _comparerKeyOnly, selectLower);
 
                 return index != -1 ? _table[_keys[index].mainKey] : default;
             }
 
             public RangeView<TKey, TMainKey, TElement> FindMany(TKey key, bool ascendant)
             {
-                int lo = BinarySearch.LowerBound(_keys!, 0, _keys.Length, (key, default!), _comparerKeyOnly);
+                int lo = BinarySearch.LowerBound(_keys!, 0, _count, (key, default!), _comparerKeyOnly);
                 if (lo == -1)
                     return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
 
-                int hi = BinarySearch.UpperBound(_keys!, 0, _keys.Length, (key, default), _comparerKeyOnly);
+                int hi = BinarySearch.UpperBound(_keys!, 0, _count, (key, default), _comparerKeyOnly);
                 if (hi == -1)
                     return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
 
@@ -213,12 +209,12 @@ namespace MasterMemory
             {
                 int closest = BinarySearch.FindClosest(_keys!,
                     0,
-                    _keys.Length,
+                    _count,
                     (key, default),
                     _comparerKeyOnly,
                     selectLower);
 
-                if (closest == -1 || closest >= _keys.Length)
+                if (closest == -1 || closest >= _count)
                     return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
 
                 return FindMany(_keys[closest].key, ascendant);
@@ -235,16 +231,16 @@ namespace MasterMemory
                 //... want lo to be the lowest  index of the values >= than min.
                 //... lo should be in the range [0,arraylength]
 
-                int lo = BinarySearch.LowerBoundClosest(_keys!, 0, _keys.Length, (min, default), _comparerKeyOnly);
+                int lo = BinarySearch.LowerBoundClosest(_keys!, 0, _count, (min, default), _comparerKeyOnly);
 
                 //... want hi to be the highest index of the values <= than max
                 //... hi should be in the range [-1,arraylength-1]
 
-                int hi = BinarySearch.UpperBoundClosest(_keys!, 0, _keys.Length, (max, default), _comparerKeyOnly);
+                int hi = BinarySearch.UpperBoundClosest(_keys!, 0, _count, (max, default), _comparerKeyOnly);
                 if (lo < 0)
                     throw new InvalidOperationException("lo is less than 0");
 
-                if (hi >= _keys.Length)
+                if (hi >= _count)
                     throw new InvalidOperationException("hi is greater than or equal to keys length");
 
                 if (hi < lo)

@@ -5,9 +5,9 @@ using MasterMemory.Annotations;
 
 namespace MasterMemory.Generator.Core;
 
-internal static class TransactionObserverGenerator
+internal static class DbItemObserverGenerator
 {
-    public const string Name = "TransactionValueObserver";
+    public const string Name = "DbItemObserver";
 
     internal static void Execute(SourceGeneratorContext context, DatabaseModel database, StringBuilder sb)
     {
@@ -29,12 +29,12 @@ internal static class TransactionObserverGenerator
                 }
                 else
                 {
-                    sb.Append("event System.Action<Operation<TValue>> OnCommit;");
+                    sb.Append("event OnOperation<TValue> OnCommit;");
                 }
             }
         }
 
-        context.AddSource($"I{Name}.g.cs",sb);
+        context.AddSource($"Db.I{Name}.g.cs", sb.ToStringAndClear());
 
         sb.AppendUsings(database);
 
@@ -57,7 +57,7 @@ internal static class TransactionObserverGenerator
                 }
                 else
                 {
-                    sb.Append("public event System.Action<Operation<TValue>> OnCommit;");
+                    sb.Append("public event OnOperation<TValue> OnCommit;");
                 }
 
                 using (sb.Append("protected override void PublishNext(in Operation<TValue> operation)").BracketScope())
@@ -84,6 +84,6 @@ internal static class TransactionObserverGenerator
             }
         }
 
-        context.AddSource($"{Name}.g.cs",sb);
+        context.AddSource($"Db.{Name}.g.cs", sb.ToStringAndClear());
     }
 }

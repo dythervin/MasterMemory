@@ -40,7 +40,7 @@ internal static class TableGenerator
                 sb.ReplaceKeys(model);
             }
 
-            context.AddSource($"TableInterfaces_{model.TableName}.g.cs", sb);
+            context.AddSource($"TableInterfaces.{model.TableName}.g.cs", sb.ToStringAndClear());
         }
 
         sb.AppendUsings(model.DatabaseModel);
@@ -252,7 +252,7 @@ internal static class TableGenerator
         }
 
         sb.ReplaceKeys(model);
-        context.AddSource($"Tables_{model.TableName}.g.cs", sb);
+        context.AddSource($"Tables.{model.TableName}.g.cs", sb.ToStringAndClear());
     }
 
     private static StringBuilder AppendApplyToKeyCollections(this StringBuilder sb, TableModel model)
@@ -273,7 +273,7 @@ internal static class TableGenerator
                             {
                                 using (sb.BracketScope())
                                 {
-                                    sb.Append("var key = ").AppendKeyAccessor("operation.Item", key).Append(";");
+                                    sb.Append("var key = ").AppendKeyAccessor("operation.Value", key).Append(";");
 
                                     if (key.IsNullable)
                                     {
@@ -283,7 +283,7 @@ internal static class TableGenerator
                                     using (sb.BracketScope(key.IsNullable))
                                     {
                                         sb.AppendUniqueKeyMap(key).Append(".Add(key").AppendKeyValueAccessor(key)
-                                            .Append(", Selector(operation.Item));");
+                                            .Append(", Selector(operation.Value));");
                                     }
                                 }
                             }
@@ -298,12 +298,12 @@ internal static class TableGenerator
                                 sb.Append("goto case OperationType.Replace;");
                             }
 
-                            sb.Append($"{PrimaryKey} primaryKey = Selector(operation.Item);");
+                            sb.Append($"{PrimaryKey} primaryKey = Selector(operation.Value);");
                             foreach (KeyGroupModel key in model.UniqueKeys)
                             {
                                 using (sb.BracketScope())
                                 {
-                                    sb.Append("var key = ").AppendKeyAccessor("operation.Item", key).Append(";");
+                                    sb.Append("var key = ").AppendKeyAccessor("operation.Value", key).Append(";");
 
                                     if (key.IsNullable)
                                     {
@@ -341,13 +341,13 @@ internal static class TableGenerator
 
                         using (sb.Append("case OperationType.Replace:").BracketScope())
                         {
-                            sb.Append($"{PrimaryKey} primaryKey = Selector(operation.Item);");
+                            sb.Append($"{PrimaryKey} primaryKey = Selector(operation.Value);");
 
                             foreach (KeyGroupModel key in model.UniqueKeys)
                             {
                                 using (sb.BracketScope())
                                 {
-                                    sb.Append("var key = ").AppendKeyAccessor("operation.Item", key).Append(";");
+                                    sb.Append("var key = ").AppendKeyAccessor("operation.Value", key).Append(";");
 
                                     sb.Append("var previousKey = ").AppendKeyAccessor("operation.Previous", key)
                                         .Append(";");
@@ -410,7 +410,7 @@ internal static class TableGenerator
                             {
                                 using (sb.BracketScope())
                                 {
-                                    sb.Append("var key = ").AppendKeyAccessor("operation.Item", key).Append(";");
+                                    sb.Append("var key = ").AppendKeyAccessor("operation.Value", key).Append(";");
 
                                     if (key.IsNullable)
                                     {

@@ -7,8 +7,8 @@ namespace MasterMemory.Tests
     public partial class UserLevel
     {
         [PrimaryKey]
-        public int Level { get; set; }
+        public int Level { get; init; }
         [SecondaryKey(0)]
-        public int Exp { get; set; }
+        public int Exp { get; init; }
     }
 }

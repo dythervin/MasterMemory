@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace MasterMemory
 {
-    public abstract class DatabaseBase : IDatabase
+    public abstract class DatabaseBase : IDatabaseBase
     {
         private readonly Dictionary<Type, ITable> _tables;
         private bool _isDisposed;

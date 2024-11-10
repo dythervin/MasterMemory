@@ -85,6 +85,6 @@ internal static class DatabaseBuilderGenerator
             }
         }
 
-        context.AddSource($"{name}.g.cs", sb);
+        context.AddSource($"Db.{name}.g.cs", sb.ToStringAndClear());
     }
 }

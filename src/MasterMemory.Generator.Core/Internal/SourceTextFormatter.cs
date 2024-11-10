@@ -6,14 +6,24 @@ namespace MasterMemory.Generator.Core.Internal;
 
 public static class SourceTextFormatter
 {
-    public static CompilationUnitSyntax FormatCompilationUnit(string sourceText, bool sort = true)
+    public static string FormatCompilationUnit(string sourceText, SourceGeneratorFlags flags)
     {
+        if (flags == SourceGeneratorFlags.None)
+        {
+            return sourceText;
+        }
+
         CompilationUnitSyntax compilationUnitSyntax = SyntaxFactory.ParseCompilationUnit(sourceText);
-        if (sort)
+        if (flags.HasFlagFast(SourceGeneratorFlags.SortMembers))
         {
             compilationUnitSyntax = compilationUnitSyntax.WithSortedMembers();
         }
 
-        return compilationUnitSyntax.NormalizeWhitespace();
+        if (flags.HasFlagFast(SourceGeneratorFlags.NormalizeWhitespace))
+        {
+            compilationUnitSyntax = compilationUnitSyntax.NormalizeWhitespace();
+        }
+
+        return compilationUnitSyntax.ToFullString();
     }
 }

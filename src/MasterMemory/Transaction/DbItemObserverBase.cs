@@ -3,8 +3,8 @@ using System.Collections.Generic;
 
 namespace MasterMemory
 {
-    public abstract class TransactionValueObserverBase<TValue> : Queue<Operation<TValue>>,
-        ITransactionValueObserver,
+    public abstract class DbItemObserverBase<TValue> : Queue<Operation<TValue>>,
+        IDbItemObserver,
         ICollection<Operation<TValue>>, IDisposable
     {
         bool ICollection<Operation<TValue>>.IsReadOnly => false;

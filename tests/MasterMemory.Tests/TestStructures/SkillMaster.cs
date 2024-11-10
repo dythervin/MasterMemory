@@ -7,12 +7,12 @@ namespace MasterMemory.Tests
     public partial class SkillMaster
     {
         [PrimaryKey]
-        public int SkillId { get; set; }
+        public int SkillId { get; init; }
         [PrimaryKey]
-        public int SkillLevel { get; set; }
-        public int AttackPower { get; set; }
-        public string SkillName { get; set; }
-        public string Description { get; set; }
+        public int SkillLevel { get; init; }
+        public int AttackPower { get; init; }
+        public string SkillName { get; init; }
+        public string Description { get; init; }
 
         public SkillMaster(int SkillId, int SkillLevel, int AttackPower, string SkillName, string Description)
         {

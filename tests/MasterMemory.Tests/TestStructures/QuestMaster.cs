@@ -8,15 +8,15 @@ namespace MasterMemory.Tests
     public partial record QuestMaster
     {
         [PrimaryKey]
-        public int QuestId { get; set; }
+        public int QuestId { get; init; }
 
         [UniqueKey]
-        public string Name { get; set; }
+        public string Name { get; init; }
 
         [SecondaryKey]
-        public int RewardItemId { get; set; }
+        public int RewardItemId { get; init; }
 
-        public int Cost { get; set; }
+        public int Cost { get; init; }
     }
 
     [Validator]
@@ -41,27 +41,27 @@ namespace MasterMemory.Tests
     public partial class ItemMaster
     {
         [PrimaryKey]
-        public int ItemId { get; set; }
+        public int ItemId { get; init; }
     }
 
     [Table("quest_master_empty"), MemoryPackable]
     public partial class QuestMasterEmptyValidate
     {
         [PrimaryKey]
-        public int QuestId { get; set; }
+        public int QuestId { get; init; }
 
-        public string Name { get; set; }
+        public string Name { get; init; }
 
-        public int RewardItemId { get; set; }
+        public int RewardItemId { get; init; }
 
-        public int Cost { get; set; }
+        public int Cost { get; init; }
     }
 
     [Table("item_master_empty"), MemoryPackable]
     public partial class ItemMasterEmptyValidate
     {
         [PrimaryKey]
-        public int ItemId { get; set; }
+        public int ItemId { get; init; }
     }
 
     [Table("sequantial_master"), MemoryPackable]
@@ -69,10 +69,10 @@ namespace MasterMemory.Tests
     public partial class SequentialCheckMaster
     {
         [PrimaryKey]
-        public int Id { get; set; }
+        public int Id { get; init; }
 
         [SecondaryKey]
-        public int Cost { get; set; }
+        public int Cost { get; init; }
 
         public void Validate(IDatabase db, IValidator validator)
         {
@@ -85,7 +85,7 @@ namespace MasterMemory.Tests
     public partial class Fail
     {
         [PrimaryKey]
-        public int Id { get; set; }
+        public int Id { get; init; }
     }
 
     [Validator]

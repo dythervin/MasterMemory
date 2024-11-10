@@ -15,7 +15,7 @@ internal static class DatabaseExtensionsGenerator
         using (sb.NamespaceScope(database.Namespace))
         {
             sb.Append(database.AccessibilityModifier);
-            using (sb.Append(" static class ").AppendCapitalized(name).Append("Extensions").AppendCapitalized(name)
+            using (sb.Append(" static partial class ").AppendCapitalized(name).Append("Extensions").AppendCapitalized(name)
                        .BracketScope())
             {
                 using (sb.Append("public static void Transaction(this ").Append(name).Append(" db, System.Action<")
@@ -89,6 +89,6 @@ internal static class DatabaseExtensionsGenerator
             }
         }
 
-        context.AddSource($"{name}Extensions.g.cs",sb);
+        context.AddSource($"Db.{name}Extensions.g.cs", sb.ToStringAndClear());
     }
 }

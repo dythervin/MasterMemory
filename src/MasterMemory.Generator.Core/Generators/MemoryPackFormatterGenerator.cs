@@ -38,6 +38,6 @@ internal static class MemoryPackFormatterGenerator
             }
         }
 
-        context.AddSource($"{name}Formatter.g.cs",sb);
+        context.AddSource($"Db.{name}Formatter.g.cs", sb.ToStringAndClear());
     }
 }

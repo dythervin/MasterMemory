@@ -8,7 +8,7 @@ namespace MasterMemory
     [SuppressMessage("ReSharper", "ForCanBeConvertedToForeach")]
     public abstract partial class Table<TMainKey, TElement> : ITable<TMainKey, TElement>
     {
-        public event OnOperation<TElement>? OnChange;
+        public event OnOperationChange<TElement>? OnChange;
 
         private readonly Dictionary<TMainKey, TElement> _dictionary;
         private readonly Stack<OperationChange<TElement>> _rollbackStack = new();
@@ -183,52 +183,52 @@ namespace MasterMemory
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool ExecuteOperationInternal(in Operation<TElement> operation)
         {
-            TMainKey key = KeySelector(operation.Item);
+            TMainKey key = KeySelector(operation.Value);
             switch (operation.Type)
             {
                 case OperationType.Insert:
                 {
-                    if (!CanInsert(operation.Item))
+                    if (!CanInsert(operation.Value))
                     {
                         return false;
                     }
 
-                    _dictionary.Add(key, operation.Item);
-                    OnOperation(new(OperationType.Insert, operation.Item));
-                    PushToRollbackStack(OperationType.Remove, operation.Item);
+                    _dictionary.Add(key, operation.Value);
+                    OnOperation(new(OperationType.Insert, operation.Value));
+                    PushToRollbackStack(OperationType.Remove, operation.Value);
                     return true;
                 }
                 case OperationType.Replace:
                 {
                     TElement? rollbackItem = _dictionary[key];
-                    if (EqualityComparer<TElement>.Default.Equals(rollbackItem, operation.Item))
+                    if (EqualityComparer<TElement>.Default.Equals(rollbackItem, operation.Value))
                     {
                         return false;
                     }
 
-                    _dictionary[key] = operation.Item;
-                    OnOperation(new(OperationType.Replace, rollbackItem, operation.Item));
-                    PushToRollbackStack(OperationType.Replace, operation.Item, rollbackItem);
+                    _dictionary[key] = operation.Value;
+                    OnOperation(new(OperationType.Replace, rollbackItem, operation.Value));
+                    PushToRollbackStack(OperationType.Replace, operation.Value, rollbackItem);
                     return true;
                 }
                 case OperationType.InsertOrReplace:
                 {
                     if (_dictionary.TryGetValue(key, out TElement? rollbackItem))
                     {
-                        if (EqualityComparer<TElement>.Default.Equals(rollbackItem, operation.Item))
+                        if (EqualityComparer<TElement>.Default.Equals(rollbackItem, operation.Value))
                         {
                             return false;
                         }
 
-                        _dictionary[key] = operation.Item;
-                        OnOperation(new(OperationType.InsertOrReplace, rollbackItem, operation.Item));
-                        PushToRollbackStack(OperationType.Replace, operation.Item, rollbackItem);
+                        _dictionary[key] = operation.Value;
+                        OnOperation(new(OperationType.InsertOrReplace, rollbackItem, operation.Value));
+                        PushToRollbackStack(OperationType.Replace, operation.Value, rollbackItem);
                     }
                     else
                     {
-                        _dictionary.Add(key, operation.Item);
-                        OnOperation(new(OperationType.InsertOrReplace, operation.Item));
-                        PushToRollbackStack(OperationType.Remove, operation.Item);
+                        _dictionary.Add(key, operation.Value);
+                        OnOperation(new(OperationType.InsertOrReplace, operation.Value));
+                        PushToRollbackStack(OperationType.Remove, operation.Value);
                     }
 
                     return true;

@@ -9,12 +9,15 @@ namespace MasterMemory.Annotations
 
         public DbTableFlags Flags { get; }
 
+        public int ThreadBatchSize { get; }
+
         public TableAttribute(string tableName,
             DbTableFlags flags = DbTableFlags.MultithreadedInitialization | DbTableFlags.MultithreadedModifications,
             int threadBatchSize = 1)
         {
             TableName = tableName;
             Flags = flags;
+            ThreadBatchSize = threadBatchSize;
         }
     }
 
