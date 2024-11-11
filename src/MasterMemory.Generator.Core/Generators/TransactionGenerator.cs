@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using MasterMemory.Generator.Core.Internal;
 using MasterMemory.Generator.Core.Models;
 using MasterMemory.Annotations;
@@ -37,6 +38,7 @@ internal static class TransactionGenerator
                     sb.AppendLine("private readonly System.Action _keysSortTick;");
                     sb.AppendLine("private readonly System.Action _keysSortAction;");
                     sb.AppendLine("private int _threadCount;");
+                    sb.AppendLine("private int _nextThreadIndex;");
                     sb.AppendLine("private int _maxDegreeOfParallelism;");
                     sb.AppendLine("private int[] _taskLocks = new int[")
                         .Append(tableArray.Sum(x => x.IsMultithreadedModifications ? x.ThreadCount : 0))
@@ -197,7 +199,7 @@ internal static class TransactionGenerator
 
                     using (sb.AppendLine("private async void ExecuteKeysSort()").BracketScope())
                     {
-                        sb.Append("int index = Interlocked.Increment(ref this._threadCount) - 1;");
+                        sb.Append("int index = Interlocked.Increment(ref this._nextThreadIndex) - 1;");
                         using (sb.Append("do").BracketScope())
                         {
                             using (sb.Append("for (int i = 0; i < this._taskLocks.Length; i++)").BracketScope())
@@ -217,8 +219,6 @@ internal static class TransactionGenerator
                         }
 
                         sb.AppendLine("while (this._state == (int)DbTransactionState.Running);");
-
-                        // possible bug here
                         sb.AppendLine("Interlocked.Decrement(ref this._threadCount);");
                     }
 
@@ -257,18 +257,21 @@ internal static class TransactionGenerator
                                 "if (Interlocked.CompareExchange(ref this._state, (int)DbTransactionState.Running, (int)DbTransactionState.Scheduled) != (int)DbTransactionState.Scheduled)")
                             .AppendLine("throw new System.InvalidOperationException(\"Invalid state\");");
 
-                        using (sb.Append("for (int i = this._threadCount; i < this._maxDegreeOfParallelism; i++)")
-                                   .BracketScope())
+                        using (sb.Append("while (this._threadCount < this._maxDegreeOfParallelism)").BracketScope())
                         {
+                            sb.AppendLine("int threadCount = Interlocked.Increment(ref this._threadCount);");
+                            using (sb.AppendLine("if (threadCount > this._maxDegreeOfParallelism)").BracketScope())
+                            {
+                                sb.AppendLine("Interlocked.Decrement(ref this._threadCount);");
+                                sb.AppendLine("break;");
+                            }
+
                             sb.AppendLine("this.RunOnThreadPool(this._keysSortAction);");
                         }
 
                         using (sb.Append("do").BracketScope())
                         {
-                            //using (sb.AppendLine("if ()").BracketScope())
-                            {
-                                sb.AppendLine("await Task.Yield();");
-                            }
+                            sb.AppendLine("await Task.Yield();");
                         }
 
                         sb.AppendLine("while (this.Depth > 0);");

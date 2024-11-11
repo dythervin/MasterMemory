@@ -233,7 +233,7 @@ internal static class TableGenerator
                         }
 
                         sb.Append(model.IsMultithreadedModifications,
-                            $"public readonly ConcurrentQueue<OperationChange<{Element}>> OperationQueue;");
+                            $"public readonly SpscQueue<OperationChange<{Element}>> OperationQueue;");
 
                         using (sb.Append("public BatchData(object @lock)").BracketScope())
                         {
@@ -244,7 +244,7 @@ internal static class TableGenerator
                             }
 
                             sb.Append(model.IsMultithreadedModifications,
-                                $"OperationQueue = new ConcurrentQueue<OperationChange<{Element}>>();");
+                                $"OperationQueue = new SpscQueue<OperationChange<{Element}>>();");
                         }
                     }
                 }
