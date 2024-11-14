@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using MasterMemory.Generator.Core.Internal;
 using MasterMemory.Generator.Core.Models;
@@ -89,7 +90,7 @@ internal static class TableGenerator
                     sb.AppendMembers(model, i, false);
                 }
 
-                foreach (KeyGroupModel keyGroup in model.UniqueKeys)
+                foreach (KeyGroupModel keyGroup in model.UniqueKeys.Concat(model.KeyGroups).Distinct(KeyGroupModel.NameEqualityComparer))
                 {
                     sb.AppendKeySelectorDeclaration(keyGroup);
                 }
@@ -734,7 +735,7 @@ internal static class TableGenerator
     private static void AppendConstructorStatements(this StringBuilder sb, in KeyGroupModel keyGroup)
     {
         sb.AppendKeyCollection(keyGroup).Append(" = new KeyCollection<").AppendKeyType(keyGroup)
-            .Append(">(sortedData, this, ").AppendKeysSelector(keyGroup).Append(", ").AppendComparer(keyGroup)
+            .Append(">(sortedData, this, ").AppendKeySelector(keyGroup).Append(", ").AppendKeysSelector(keyGroup).Append(", ").AppendComparer(keyGroup)
             .Append(", ").AppendKeyOnlyComparer(keyGroup).Append(", \"").Append(keyGroup.Name).Append("\");");
     }
 

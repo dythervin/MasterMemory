@@ -10,7 +10,7 @@ namespace MasterMemory.Generator.Core.Models;
 
 public readonly record struct TableModel
 {
-    private static readonly KeyModelEqualityComparer EqualityComparer = new();
+    public static readonly IEqualityComparer<KeyModel> NameEqualityComparer = new KeyModelEqualityComparer();
 
     public readonly string GlobalTypeName;
     public readonly ImmutableArray<KeyGroupModel> KeyGroups;
@@ -60,7 +60,7 @@ public readonly record struct TableModel
             "global::" + (string.IsNullOrEmpty(Namespace) ? "I" + TableName : Namespace + ".I" + TableName);
 
         KeyGroups = keys;
-        Keys = KeyGroups.SelectMany(x => x.Keys).Distinct(EqualityComparer).ToImmutableArray();
+        Keys = KeyGroups.SelectMany(x => x.Keys).Distinct(NameEqualityComparer).ToImmutableArray();
 
         UniqueKeys = uniqueKeys;
 

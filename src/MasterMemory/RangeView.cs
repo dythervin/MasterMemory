@@ -6,34 +6,45 @@ namespace MasterMemory
 {
     public readonly struct RangeView<TKey, TMainKey, TValue> : IReadOnlyList<TValue>, IList<TValue>
     {
-        private readonly Table<TMainKey, TValue> _table;
         private readonly (TKey key, TMainKey primaryKey)[] _orderedData;
-        private readonly IComparer<(TKey key, TMainKey? primaryKey)> _comparerKeyOnly;
+
         private readonly int _left;
         private readonly int _right;
         private readonly bool _ascendant;
         private readonly bool _hasValue;
         private readonly int _version;
-        public readonly string KeyName;
 
-        public ITable<TMainKey, TValue> Table => _table;
-        
-        public string ElementName => _table.ElementName;
+        private readonly Table<TMainKey, TValue>.KeyCollectionData<TKey> _keyCollectionData;
 
-        public int Count => !_hasValue ? 0 : _right - _left + 1;
+        public TValue this[int index] => _keyCollectionData.Table[GetKeys(index).primaryKey];
+
+        TValue IList<TValue>.this[int index]
+        {
+            get => this[index];
+            set => throw new NotImplementedException();
+        }
+
+        public int Count
+        {
+            get
+            {
+                AssertVersion();
+                return CountUnsafe;
+            }
+        }
+
+        public ITable<TMainKey, TValue> Table => _keyCollectionData.Table;
+
+        public RangeView<TKey, TMainKey, TValue> Reverse =>
+            new(_orderedData, _left, _right, !_ascendant, _keyCollectionData);
+
+        public string ElementName => _keyCollectionData.Table.ElementName;
+
+        public string KeyName => _keyCollectionData.KeyName;
 
         public TValue First => this[0];
 
-        public TValue Last => this[Count - 1];
-
-        public RangeView<TKey, TMainKey, TValue> Reverse =>
-            new RangeView<TKey, TMainKey, TValue>(_orderedData,
-                _left,
-                _right,
-                !_ascendant,
-                _table,
-                _comparerKeyOnly,
-                KeyName);
+        public TValue Last => this[CountUnsafe - 1];
 
         internal int FirstIndex => _ascendant ? _left : _right;
 
@@ -41,44 +52,47 @@ namespace MasterMemory
 
         bool ICollection<TValue>.IsReadOnly => true;
 
-        public (TKey key, TMainKey primaryKey) GetKeys(int index)
-        {
-            if (!_hasValue)
-                throw new ArgumentOutOfRangeException(nameof(index), index, "Empty");
-
-            if (index < 0)
-                throw new ArgumentOutOfRangeException(nameof(index), index, "index < 0");
-
-            if (Count <= index)
-                throw new ArgumentOutOfRangeException(nameof(index), index, "index >= Count");
-
-            if (_version != _table.Version)
-                throw new InvalidOperationException("Table modified");
-
-            return _orderedData[_ascendant ? _left + index : _right - index];
-        }
-
-        public TValue this[int index] => _table[GetKeys(index).primaryKey];
+        private int CountUnsafe => !_hasValue ? 0 : _right - _left + 1;
 
         public RangeView((TKey key, TMainKey primaryKey)[] orderedData, int left, int right, bool ascendant,
-            Table<TMainKey, TValue> table, IComparer<(TKey key, TMainKey? primaryKey)> comparerKeyOnly, string keyName)
+            Table<TMainKey, TValue>.KeyCollectionData<TKey> keyCollectionData)
         {
+            _keyCollectionData = keyCollectionData;
             _hasValue = orderedData.Length != 0 && left <= right;
 
             _orderedData = orderedData;
             _left = left;
             _right = right;
             _ascendant = ascendant;
-            KeyName = keyName;
-            _comparerKeyOnly = comparerKeyOnly;
-            _table = table;
-            _version = table?.Version ?? 0;
+            _version = _keyCollectionData.Table.Version;
         }
 
-        public static RangeView<TKey, TMainKey, TValue> GetEmpty((TKey key, TMainKey primaryKey)[] orderedData,
-            Table<TMainKey, TValue> table, string keyName)
+        public static RangeView<TKey, TMainKey, TValue> GetEmpty(
+            Table<TMainKey, TValue>.KeyCollectionData<TKey> keyCollectionData)
         {
-            return new RangeView<TKey, TMainKey, TValue>(orderedData, 0, -1, default, table, null!, keyName);
+            return new(Array.Empty<(TKey key, TMainKey primaryKey)>(), 0, -1, default, keyCollectionData);
+        }
+
+        public (TKey key, TMainKey primaryKey) GetKeys(int index)
+        {
+            if (!_hasValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), index, "Empty");
+            }
+
+            AssertVersion();
+
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), index, "index < 0");
+            }
+
+            if (CountUnsafe <= index)
+            {
+                throw new ArgumentOutOfRangeException(nameof(index), index, "index >= Count");
+            }
+
+            return _orderedData[_ascendant ? _left + index : _right - index];
         }
 
         public RangeView<TKey, TMainKey, TValue> Slice(int start, int count)
@@ -89,23 +103,139 @@ namespace MasterMemory
         public RangeView<TKey, TMainKey, TValue> Slice(int start, int count, bool ascendant)
         {
             if (count == 0)
-                return GetEmpty(_orderedData, _table, KeyName);
+            {
+                return GetEmpty(_keyCollectionData);
+            }
 
             if (count < 0)
+            {
                 throw new ArgumentOutOfRangeException(nameof(count));
+            }
 
-            return new RangeView<TKey, TMainKey, TValue>(_orderedData,
-                _left + start,
-                _left + start + count - 1,
-                ascendant,
-                _table,
-                _comparerKeyOnly,
-                KeyName);
+            return new(_orderedData, _left + start, _left + start + count - 1, ascendant, _keyCollectionData);
         }
 
         public Enumerator GetEnumerator()
         {
-            return new Enumerator(this);
+            return new(this);
+        }
+
+        public bool Any()
+        {
+            AssertVersion();
+            return CountUnsafe != 0;
+        }
+
+        public int IndexOfFirst(in TValue item)
+        {
+            AssertVersion();
+            int count = CountUnsafe;
+            if (count == 0)
+            {
+                return -1;
+            }
+
+            return BinarySearch.LowerBound<(TKey key, TMainKey? primaryKey)>(_orderedData!,
+                _left,
+                _right + 1,
+                (_keyCollectionData.KeySelector(item), default!),
+                _keyCollectionData.ComparerKeyOnly);
+        }
+
+        public int IndexOfLast(in TValue item)
+        {
+            AssertVersion();
+            int count = CountUnsafe;
+            if (count == 0)
+            {
+                return -1;
+            }
+
+            return BinarySearch.UpperBound<(TKey key, TMainKey? primaryKey)>(_orderedData!,
+                _left,
+                _right + 1,
+                (_keyCollectionData.KeySelector(item), default!),
+                _keyCollectionData.ComparerKeyOnly);
+        }
+
+        /// <summary>
+        ///     O(N) search.
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public bool Contains(in TValue item)
+        {
+            return CountUnsafe != 0 && ContainsKey(_keyCollectionData.KeySelector(item));
+        }
+
+        /// <summary>
+        ///     O(log N) search.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public int IndexOfFirst(TKey key)
+        {
+            AssertVersion();
+            int count = CountUnsafe;
+            if (count == 0)
+            {
+                return -1;
+            }
+
+            return BinarySearch.LowerBound<(TKey key, TMainKey? primaryKey)>(_orderedData!,
+                _left,
+                _right + 1,
+                (key, default),
+                _keyCollectionData.ComparerKeyOnly);
+        }
+
+        /// <summary>
+        ///     O(log N) search.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public int IndexOfLast(TKey key)
+        {
+            AssertVersion();
+            int count = CountUnsafe;
+            if (count == 0)
+            {
+                return -1;
+            }
+
+            return BinarySearch.UpperBound<(TKey key, TMainKey? primaryKey)>(_orderedData!,
+                _left,
+                _right + 1,
+                (key, default),
+                _keyCollectionData.ComparerKeyOnly);
+        }
+
+        /// <summary>
+        ///     O(log N) search.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public bool ContainsKey(TKey key)
+        {
+            return IndexOfFirst(key) >= 0;
+        }
+
+        public void CopyTo(TValue[] array, int arrayIndex)
+        {
+            AssertVersion();
+            int count = CountUnsafe;
+            for (int i = 0; i < count; i++)
+            {
+                array[arrayIndex + i] = this[i];
+            }
+        }
+
+        private void AssertVersion()
+        {
+            if (_version != _keyCollectionData.Table.Version)
+            {
+                throw new InvalidOperationException("Table modified");
+            }
         }
 
         IEnumerator<TValue> IEnumerable<TValue>.GetEnumerator()
@@ -118,105 +248,12 @@ namespace MasterMemory
             return GetEnumerator();
         }
 
-        public bool Any()
-        {
-            return Count != 0;
-        }
-
-        public int IndexOf(in TValue item)
-        {
-            var i = 0;
-            foreach (var v in this)
-            {
-                if (EqualityComparer<TValue>.Default.Equals(v, item))
-                {
-                    return i;
-                }
-
-                i++;
-            }
-
-            return -1;
-        }
-
-        /// <summary>
-        /// O(N) search.
-        /// </summary>
-        /// <param name="item"></param>
-        /// <returns></returns>
-        public bool Contains(in TValue item)
-        {
-            int count = Count;
-            for (int i = 0; i < count; i++)
-            {
-                if (EqualityComparer<TValue>.Default.Equals(this[i], item))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// O(log N) search.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public int IndexOfFirst(TKey key)
-        {
-            int count = Count;
-            if (count == 0)
-                return -1;
-
-            return BinarySearch.LowerBound(_orderedData!, 0, _orderedData.Length, (key, default!), _comparerKeyOnly);
-        }
-
-        /// <summary>
-        /// O(log N) search.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public int IndexOfLast(TKey key)
-        {
-            int count = Count;
-            if (count == 0)
-                return -1;
-
-            return BinarySearch.UpperBound(_orderedData!, 0, _orderedData.Length, (key, default), _comparerKeyOnly);
-        }
-
-        /// <summary>
-        /// O(log N) search.
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public bool ContainsKey(TKey key)
-        {
-            return IndexOfFirst(key) >= 0;
-        }
-
-        public void CopyTo(TValue[] array, int arrayIndex)
-        {
-            var count = Count;
-            for (int i = 0; i < count; i++)
-            {
-                array[arrayIndex + i] = this[i];
-            }
-        }
-
-        TValue IList<TValue>.this[int index]
-        {
-            get => this[index];
-            set => throw new NotImplementedException();
-        }
-
         bool ICollection<TValue>.Contains(TValue item)
         {
-            var count = Count;
+            int count = Count;
             for (int i = 0; i < count; i++)
             {
-                var v = this[i];
+                TValue v = this[i];
                 if (EqualityComparer<TValue>.Default.Equals(v, item))
                 {
                     return true;
@@ -228,18 +265,7 @@ namespace MasterMemory
 
         int IList<TValue>.IndexOf(TValue item)
         {
-            var i = 0;
-            foreach (var v in this)
-            {
-                if (EqualityComparer<TValue>.Default.Equals(v, item))
-                {
-                    return i;
-                }
-
-                i++;
-            }
-
-            return -1;
+            return IndexOfFirst(item);
         }
 
         void IList<TValue>.Insert(int index, TValue item)

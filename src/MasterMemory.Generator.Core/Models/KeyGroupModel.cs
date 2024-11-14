@@ -9,6 +9,8 @@ namespace MasterMemory.Generator.Core.Models;
 
 public record KeyGroupModel : IReadOnlyList<KeyModel>
 {
+    public static readonly IEqualityComparer<KeyGroupModel> NameEqualityComparer = new KeyModelEqualityComparer();
+
     public bool IsGroupUnique { get; init; }
 
     public ImmutableArray<KeyModel> Keys { get; init; }
@@ -117,5 +119,18 @@ public record KeyGroupModel : IReadOnlyList<KeyModel>
     IEnumerator IEnumerable.GetEnumerator()
     {
         return ((IEnumerable)Keys).GetEnumerator();
+    }
+
+    public class KeyModelEqualityComparer : IEqualityComparer<KeyGroupModel>
+    {
+        public bool Equals(KeyGroupModel x, KeyGroupModel y)
+        {
+            return x.Name.Equals(y.Name, StringComparison.Ordinal);
+        }
+
+        public int GetHashCode(KeyGroupModel obj)
+        {
+            return obj.Name.GetHashCode();
+        }
     }
 }

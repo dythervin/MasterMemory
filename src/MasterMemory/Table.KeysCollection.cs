@@ -5,30 +5,53 @@ namespace MasterMemory
 {
     public partial class Table<TMainKey, TElement>
     {
+        public sealed class KeyCollectionData<TKey>
+        {
+            public readonly Table<TMainKey, TElement> Table;
+            public readonly KeySelector<TElement, (TKey key, TMainKey mainKey)> KeysSelector;
+            public readonly IComparer<(TKey key, TMainKey mainKey)> Comparer;
+            public readonly IComparer<(TKey key, TMainKey? mainKey)> ComparerKeyOnly;
+            public readonly string KeyName;
+            public readonly KeySelector<TElement, TKey> KeySelector;
+
+            public KeyCollectionData(Table<TMainKey, TElement> table,
+                KeySelector<TElement, (TKey key, TMainKey mainKey)> keysSelector,
+                IComparer<(TKey key, TMainKey mainKey)> comparer,
+                IComparer<(TKey key, TMainKey? mainKey)> comparerKeyOnly, string keyName,
+                KeySelector<TElement, TKey> keySelector)
+            {
+                Table = table;
+                KeysSelector = keysSelector;
+                Comparer = comparer;
+                ComparerKeyOnly = comparerKeyOnly;
+                KeyName = keyName;
+                KeySelector = keySelector;
+            }
+        }
+
         protected class KeyCollection<TKey>
         {
             private (TKey key, TMainKey mainKey)[] _keys;
             private int _count;
-            private readonly IComparer<(TKey key, TMainKey mainKey)> _comparer;
-            private readonly Table<TMainKey, TElement> _table;
-            private readonly KeySelector<TElement, (TKey key, TMainKey mainKey)> _keySelector;
-            private readonly IComparer<(TKey key, TMainKey? mainKey)> _comparerKeyOnly;
-            private readonly string _keyName;
+            private readonly KeyCollectionData<TKey> _data;
 
             public KeyCollection(IReadOnlyList<TElement> items, Table<TMainKey, TElement> table,
-                KeySelector<TElement, (TKey key, TMainKey mainKey)> keySelector,
+                KeySelector<TElement, TKey> keySelector,
+                KeySelector<TElement, (TKey key, TMainKey mainKey)> keysSelector,
                 IComparer<(TKey key, TMainKey mainKey)> comparer,
                 IComparer<(TKey key, TMainKey? mainKey)> comparerKeyOnly, string keyName)
             {
-                _comparer = comparer;
-                _comparerKeyOnly = comparerKeyOnly;
-                _keyName = keyName;
-                _table = table;
-                _keySelector = keySelector;
                 _keys = new (TKey key, TMainKey mainKey)[items.Count];
+                _data = new KeyCollectionData<TKey>(table,
+                    keysSelector,
+                    comparer,
+                    comparerKeyOnly,
+                    keyName,
+                    keySelector);
+
                 for (int i = 0; i < items.Count; i++)
                 {
-                    _keys[i] = _keySelector(items[i]);
+                    _keys[i] = _data.KeysSelector(items[i]);
                 }
 
                 _count = items.Count;
@@ -36,12 +59,12 @@ namespace MasterMemory
 
             public RangeView<TKey, TMainKey, TElement> GetAll(bool ascendant = true)
             {
-                return new(_keys, 0, _count - 1, ascendant, _table, _comparerKeyOnly, _keyName);
+                return new(_keys, 0, _count - 1, ascendant, _data);
             }
 
             public void Sort()
             {
-                Array.Sort(_keys, 0, _count, _comparer);
+                Array.Sort(_keys, 0, _count, _data.Comparer);
             }
 
             public void Execute(in OperationChange<TElement> operationChange)
@@ -52,12 +75,12 @@ namespace MasterMemory
                     return;
                 }
 
-                (TKey key, TMainKey mainKey) key = _keySelector(operationChange.Value);
+                (TKey key, TMainKey mainKey) key = _data.KeysSelector(operationChange.Value);
                 switch (operationChange.Type)
                 {
                     case OperationType.Insert:
                     {
-                        int index = Array.BinarySearch(_keys, 0, _count, key, _comparer);
+                        int index = Array.BinarySearch(_keys, 0, _count, key, _data.Comparer);
                         if (index >= 0)
                         {
                             throw new InvalidOperationException($"Key already exists: {key}");
@@ -74,7 +97,7 @@ namespace MasterMemory
                     }
                     case OperationType.InsertOrReplace:
                     {
-                        int index = Array.BinarySearch(_keys, 0, _count, key, _comparer);
+                        int index = Array.BinarySearch(_keys, 0, _count, key, _data.Comparer);
                         if (index >= 0)
                         {
                             _keys[index] = key;
@@ -97,12 +120,13 @@ namespace MasterMemory
                         int index = Array.BinarySearch(_keys,
                             0,
                             _count,
-                            _keySelector(operationChange.Previous),
-                            _comparer);
+                            _data.KeysSelector(operationChange.Previous),
+                            _data.Comparer);
 
                         if (index < 0)
                         {
-                            throw new KeyNotFoundException($"Key not found: {_keySelector(operationChange.Previous)}");
+                            throw new KeyNotFoundException(
+                                $"Key not found: {_data.KeysSelector(operationChange.Previous)}");
                         }
 
                         _keys[index] = key;
@@ -110,7 +134,7 @@ namespace MasterMemory
                     }
                     case OperationType.Remove:
                     {
-                        int index = Array.BinarySearch(_keys, 0, _count, key, _comparer);
+                        int index = Array.BinarySearch(_keys, 0, _count, key, _data.Comparer);
                         if (index < 0)
                         {
                             throw new KeyNotFoundException($"Key not found: {key}");
@@ -143,10 +167,10 @@ namespace MasterMemory
 
             public TElement FindUnique(TKey key)
             {
-                int index = BinarySearch.FindFirst(_keys!, (key, default), _comparerKeyOnly);
+                int index = BinarySearch.FindFirst(_keys!, (key, default), _data.ComparerKeyOnly);
                 if (index != -1)
                 {
-                    return _table[_keys[index].mainKey];
+                    return _data.Table[_keys[index].mainKey];
                 }
 
                 throw new KeyNotFoundException("DataType: " + typeof(TElement).FullName + ", Key: " + key);
@@ -154,10 +178,10 @@ namespace MasterMemory
 
             public bool TryFindUnique(TKey key, out TElement? result)
             {
-                int index = BinarySearch.FindFirst(_keys!, (key, default), _comparerKeyOnly);
+                int index = BinarySearch.FindFirst(_keys!, (key, default), _data.ComparerKeyOnly);
                 if (index != -1)
                 {
-                    result = _table[_keys[index].mainKey];
+                    result = _data.Table[_keys[index].mainKey];
                     return true;
                 }
 
@@ -167,8 +191,8 @@ namespace MasterMemory
 
             public RangeView<TKey, TMainKey, TElement> FindUniqueRange(TKey min, TKey max, bool ascendant)
             {
-                int lo = BinarySearch.FindClosest(_keys!, 0, _count, (min, default), _comparerKeyOnly, false);
-                int hi = BinarySearch.FindClosest(_keys!, 0, _count, (max, default), _comparerKeyOnly, true);
+                int lo = BinarySearch.FindClosest(_keys!, 0, _count, (min, default), _data.ComparerKeyOnly, false);
+                int hi = BinarySearch.FindClosest(_keys!, 0, _count, (max, default), _data.ComparerKeyOnly, true);
 
                 if (lo == -1)
                     lo = 0;
@@ -176,33 +200,32 @@ namespace MasterMemory
                 if (hi == _count)
                     hi -= 1;
 
-                return new(_keys, lo, hi, ascendant, _table, _comparerKeyOnly, _keyName);
+                return new(_keys, lo, hi, ascendant, _data);
             }
 
             public TElement? FindUniqueClosest(TKey key, bool selectLower)
             {
-                int index = BinarySearch.FindClosest(_keys!, 0, _count, (key, default), _comparerKeyOnly, selectLower);
+                int index = BinarySearch.FindClosest(_keys!,
+                    0,
+                    _count,
+                    (key, default),
+                    _data.ComparerKeyOnly,
+                    selectLower);
 
-                return index != -1 ? _table[_keys[index].mainKey] : default;
+                return index != -1 ? _data.Table[_keys[index].mainKey] : default;
             }
 
             public RangeView<TKey, TMainKey, TElement> FindMany(TKey key, bool ascendant)
             {
-                int lo = BinarySearch.LowerBound(_keys!, 0, _count, (key, default!), _comparerKeyOnly);
+                int lo = BinarySearch.LowerBound(_keys!, 0, _count, (key, default!), _data.ComparerKeyOnly);
                 if (lo == -1)
-                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
+                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_data);
 
-                int hi = BinarySearch.UpperBound(_keys!, 0, _count, (key, default), _comparerKeyOnly);
+                int hi = BinarySearch.UpperBound(_keys!, 0, _count, (key, default), _data.ComparerKeyOnly);
                 if (hi == -1)
-                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
+                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_data);
 
-                return new RangeView<TKey, TMainKey, TElement>(_keys,
-                    lo,
-                    hi,
-                    ascendant,
-                    _table,
-                    _comparerKeyOnly,
-                    _keyName);
+                return new RangeView<TKey, TMainKey, TElement>(_keys, lo, hi, ascendant, _data);
             }
 
             public RangeView<TKey, TMainKey, TElement> FindManyClosest(TKey key, bool selectLower, bool ascendant)
@@ -211,11 +234,11 @@ namespace MasterMemory
                     0,
                     _count,
                     (key, default),
-                    _comparerKeyOnly,
+                    _data.ComparerKeyOnly,
                     selectLower);
 
                 if (closest == -1 || closest >= _count)
-                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
+                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_data);
 
                 return FindMany(_keys[closest].key, ascendant);
             }
@@ -226,17 +249,17 @@ namespace MasterMemory
                 //... Alternatively, could treat this as between and swap min and max.
 
                 if (Comparer<TKey>.Default.Compare(min, max) > 0)
-                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
+                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_data);
 
                 //... want lo to be the lowest  index of the values >= than min.
                 //... lo should be in the range [0,arraylength]
 
-                int lo = BinarySearch.LowerBoundClosest(_keys!, 0, _count, (min, default), _comparerKeyOnly);
+                int lo = BinarySearch.LowerBoundClosest(_keys!, 0, _count, (min, default), _data.ComparerKeyOnly);
 
                 //... want hi to be the highest index of the values <= than max
                 //... hi should be in the range [-1,arraylength-1]
 
-                int hi = BinarySearch.UpperBoundClosest(_keys!, 0, _count, (max, default), _comparerKeyOnly);
+                int hi = BinarySearch.UpperBoundClosest(_keys!, 0, _count, (max, default), _data.ComparerKeyOnly);
                 if (lo < 0)
                     throw new InvalidOperationException("lo is less than 0");
 
@@ -244,15 +267,9 @@ namespace MasterMemory
                     throw new InvalidOperationException("hi is greater than or equal to keys length");
 
                 if (hi < lo)
-                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_keys, _table, _keyName);
+                    return RangeView<TKey, TMainKey, TElement>.GetEmpty(_data);
 
-                return new RangeView<TKey, TMainKey, TElement>(_keys,
-                    lo,
-                    hi,
-                    ascendant,
-                    _table,
-                    _comparerKeyOnly,
-                    _keyName);
+                return new RangeView<TKey, TMainKey, TElement>(_keys, lo, hi, ascendant, _data);
             }
         }
     }
