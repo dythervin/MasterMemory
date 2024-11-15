@@ -157,7 +157,7 @@ namespace MasterMemory.Tests
 
             Action action = () => queue.Dequeue();
 
-            action.Should().Throw<InvalidOperationException>().WithMessage("Queue is empty.");
+            action.Should().Throw<InvalidOperationException>().WithMessage("Cannot dequeue from an empty queue.");
         }
     }
 }
